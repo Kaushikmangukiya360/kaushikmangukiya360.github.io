@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Poppins", sans-serif;
+}
+.card-inner {
+    margin: auto;
+    text-align: center;
+    height: 100vh;
+}   
+.bg-card {
+    background: url(https://i.ibb.co/gds7RKk/milad-fakurian-n-Y14-Fs8px-T8-unsplash.jpg);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    height: 100%;
+    position: relative;
+}
+.bg-card  h1 {
+    font-size: 100px;
+    margin: 0;
+    color: #fff;
+    line-height: 120px;
+}
+.bg-card p {
+    margin: 18px 0;
+    color: #fff;
+    font-size: 18px;
+    line-height: 20px;
+}
+.bg-card .card-button {
+    display: inline-block;
+    width: auto;
+    color: #fff;
+    font-size: 18px;
+    text-decoration: none;
+    padding: 14px 40px;
+    background: #000;
+    border-radius: 15px;
+    overflow: hidden;
+    transition: all .3s;
+    position: relative;
+}
+.bg-card .card-button:hover {
+    color: #000;
+    background-color: #fff;
+}
+.bg-card .card-social {
+    margin: 50px 0 0;
+}
+.bg-card .card-social i {
+    color: #fff;
+    padding: 0 10px 0;
+    font-size: 25px;
+}
+.card-content {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
