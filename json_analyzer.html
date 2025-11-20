@@ -12,7 +12,7 @@
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans: ['Poppins', 'sans-serif'],
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
@@ -41,7 +41,7 @@
         }
     </script>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <style>
         /* Custom Scrollbar */
@@ -74,32 +74,56 @@
         /* Tree Lines */
         .tree-guide {
             border-left: 1px solid;
-            @apply border-gray-200 dark:border-gray-700;
+            border-color: #e5e7eb;
             position: absolute;
             top: 0;
             bottom: 0;
             left: 0.5rem;
         }
+        
+        .dark .tree-guide {
+            border-color: #374151;
+        }
 
         /* Syntax Highlighting Colors */
         .syntax-key {
-            @apply text-sky-600 dark:text-sky-300;
+            color: #0284c7;
+        }
+        
+        .dark .syntax-key {
+            color: #7dd3fc;
         }
 
         .syntax-string {
-            @apply text-emerald-600 dark:text-emerald-300;
+            color: #059669;
+        }
+        
+        .dark .syntax-string {
+            color: #6ee7b7;
         }
 
         .syntax-number {
-            @apply text-rose-500 dark:text-rose-300;
+            color: #f43f5e;
+        }
+        
+        .dark .syntax-number {
+            color: #fda4af;
         }
 
         .syntax-boolean {
-            @apply text-amber-500 dark:text-amber-300;
+            color: #f59e0b;
+        }
+        
+        .dark .syntax-boolean {
+            color: #fcd34d;
         }
 
         .syntax-null {
-            @apply text-gray-500 dark:text-gray-400;
+            color: #6b7280;
+        }
+        
+        .dark .syntax-null {
+            color: #9ca3af;
         }
 
         /* Editor Line Numbers */
@@ -114,7 +138,12 @@
             width: 2rem;
             text-align: right;
             margin-right: 1rem;
-            @apply text-gray-400 dark:text-gray-600 select-none;
+            color: #9ca3af;
+            user-select: none;
+        }
+        
+        .dark .line-numbers>div::before {
+            color: #4b5563;
         }
 
         /* Resizer */
@@ -273,7 +302,7 @@
         <div class="flex items-center gap-4">
             <div class="hidden md:flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                 id="cmd-palette-trigger">
-                <span class="font-mono">⌘K</span>
+                <span class="font-mono">Alt+K</span>
                 <span>Command Palette</span>
             </div>
 
@@ -347,7 +376,7 @@
                         </button>
                         <button id="btn-shortcuts-help"
                             class="text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
-                            title="Keyboard Shortcuts (?)">
+                            title="Keyboard Shortcuts (Alt+/)">
                             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd"
                                     d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
@@ -372,6 +401,10 @@
                                     class="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Format</button>
                                 <button id="btn-minify"
                                     class="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Minify</button>
+                                <button id="btn-import-curl" title="Import from cURL"
+                                    class="text-xs px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white transition-colors">
+                                    Import cURL
+                                </button>
 
                                 <!-- Export Dropdown -->
                                 <div class="relative" id="export-dropdown-container">
@@ -427,8 +460,9 @@
                             </div>
                         </div>
                         <div class="relative flex-1">
+                            <pre id="json-overlay" class="absolute inset-0 w-full h-full p-4 bg-transparent font-mono text-sm whitespace-pre-wrap break-words pointer-events-none text-gray-700 dark:text-gray-200 overflow-auto"></pre>
                             <textarea id="json-input"
-                                class="absolute inset-0 w-full h-full p-4 bg-white dark:bg-gray-950 font-mono text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 border-none"
+                                class="absolute inset-0 w-full h-full p-4 bg-transparent font-mono text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 border-none caret-indigo-500" 
                                 placeholder="Paste JSON here..." spellcheck="false"></textarea>
                             <!-- Linter Overlay (Simplified implementation via absolute positioning markers could go here, but we'll use a separate panel for simplicity) -->
                         </div>
@@ -436,7 +470,7 @@
                         <div id="linter-status-old"
                             class="h-8 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 flex items-center px-4 text-xs gap-4">
                             <span class="text-green-500 flex items-center gap-1"><span
-                                    class="w-2 h-2 rounded-full bg-green-500"></span> Valid</span>
+                                    class="w-2 h-2 rounded-full bg-green-500"></span> JSON Analyzer</span>
                         </div>
                     </div>
 
@@ -461,7 +495,7 @@
                                 <div class="relative">
                                     <input type="text" id="tree-search"
                                         class="pl-6 pr-2 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 focus:outline-none focus:border-indigo-500 w-32 focus:w-48 transition-all"
-                                        placeholder="Search (Ctrl+F)...">
+                                        placeholder="Search (Alt+F)...">
                                     <svg class="w-3 h-3 text-gray-400 absolute left-1.5 top-1.5" fill="none"
                                         stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -593,6 +627,22 @@
         </div>
     </div>
 
+    <!-- Import cURL Modal -->
+    <div id="curl-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-900 rounded-lg w-full max-w-2xl p-4 border border-gray-200 dark:border-gray-800">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-bold">Import from cURL</h3>
+                <button id="curl-modal-close" class="text-gray-400 hover:text-gray-700">✖</button>
+            </div>
+            <textarea id="curl-input" class="w-full h-32 p-2 text-sm font-mono bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded" placeholder="Paste cURL command here"></textarea>
+            <div class="mt-2 flex justify-end gap-2">
+                <button id="curl-import" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm">Import</button>
+                <button id="curl-cancel" class="px-3 py-1 border border-gray-200 dark:border-gray-700 rounded text-sm">Cancel</button>
+            </div>
+            <div id="curl-feedback" class="mt-2 text-xs text-red-500 hidden"></div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -623,60 +673,185 @@
                     <div>
                         <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">📝 Editing</h4>
                         <div class="space-y-1 text-xs">
-                            <div class="flex justify-between"><span>Format JSON</span><kbd class="kbd">Ctrl+S</kbd>
+                            <div class="flex justify-between"><span>Format JSON</span><kbd class="kbd">Alt+S</kbd>
                             </div>
                             <div class="flex justify-between"><span>Minify JSON</span><kbd
-                                    class="kbd">Ctrl+Shift+M</kbd></div>
-                            <div class="flex justify-between"><span>Copy JSON</span><kbd class="kbd">Ctrl+C</kbd></div>
-                            <div class="flex justify-between"><span>Paste JSON</span><kbd class="kbd">Ctrl+V</kbd></div>
+                                    class="kbd">Alt+Shift+M</kbd></div>
+                            <div class="flex justify-between"><span>Copy JSON</span><kbd class="kbd">Alt+C</kbd></div>
+                            <div class="flex justify-between"><span>Paste JSON</span><kbd class="kbd">Ctrl+V / Alt+Shift+V</kbd></div>
                         </div>
                     </div>
                     <div>
                         <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">🔍 Search & Navigation
                         </h4>
                         <div class="space-y-1 text-xs">
-                            <div class="flex justify-between"><span>Search in Tree</span><kbd class="kbd">Ctrl+F</kbd>
+                            <div class="flex justify-between"><span>Search in Tree</span><kbd class="kbd">Alt+F</kbd>
                             </div>
-                            <div class="flex justify-between"><span>Next Result</span><kbd class="kbd">F3 / Ctrl+G</kbd>
+                            <div class="flex justify-between"><span>Next Result</span><kbd class="kbd">F3 / Alt+G</kbd>
                             </div>
                             <div class="flex justify-between"><span>Previous Result</span><kbd
                                     class="kbd">Shift+F3</kbd></div>
-                            <div class="flex justify-between"><span>Command Palette</span><kbd class="kbd">Ctrl+K</kbd>
+                            <div class="flex justify-between"><span>Command Palette</span><kbd class="kbd">Alt+K</kbd>
+                            </div>
+                            <div class="flex justify-between"><span>Help</span><kbd class="kbd">Alt+H</kbd>
                             </div>
                         </div>
                     </div>
                     <div>
                         <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">📂 Tree View</h4>
                         <div class="space-y-1 text-xs">
-                            <div class="flex justify-between"><span>Expand All</span><kbd class="kbd">Ctrl+E</kbd></div>
+                            <div class="flex justify-between"><span>Expand All</span><kbd class="kbd">Alt+E</kbd></div>
                             <div class="flex justify-between"><span>Collapse All</span><kbd
-                                    class="kbd">Ctrl+Shift+E</kbd></div>
+                                    class="kbd">Alt+Shift+E</kbd></div>
                         </div>
                     </div>
                     <div>
                         <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">🖥️ Views</h4>
                         <div class="space-y-1 text-xs">
-                            <div class="flex justify-between"><span>Analyze View</span><kbd class="kbd">Ctrl+1</kbd>
+                            <div class="flex justify-between"><span>Analyze View</span><kbd class="kbd">Alt+1</kbd>
                             </div>
-                            <div class="flex justify-between"><span>Diff View</span><kbd class="kbd">Ctrl+D</kbd></div>
+                            <div class="flex justify-between"><span>Diff View</span><kbd class="kbd">Alt+D</kbd></div>
                             <div class="flex justify-between"><span>Fullscreen</span><kbd class="kbd">F11</kbd></div>
                         </div>
                     </div>
                     <div>
                         <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">🎨 Appearance</h4>
                         <div class="space-y-1 text-xs">
-                            <div class="flex justify-between"><span>Toggle Theme</span><kbd class="kbd">Ctrl+T</kbd>
+                            <div class="flex justify-between"><span>Toggle Theme</span><kbd class="kbd">Alt+T</kbd>
                             </div>
-                            <div class="flex justify-between"><span>Zoom In</span><kbd class="kbd">Ctrl+=</kbd></div>
-                            <div class="flex justify-between"><span>Zoom Out</span><kbd class="kbd">Ctrl+-</kbd></div>
-                            <div class="flex justify-between"><span>Reset Zoom</span><kbd class="kbd">Ctrl+0</kbd></div>
+                            <div class="flex justify-between"><span>Zoom In</span><kbd class="kbd">Alt+=</kbd></div>
+                            <div class="flex justify-between"><span>Zoom Out</span><kbd class="kbd">Alt+-</kbd></div>
+                            <div class="flex justify-between"><span>Reset Zoom</span><kbd class="kbd">Alt+0</kbd></div>
                         </div>
                     </div>
                     <div>
                         <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">❓ Help</h4>
                         <div class="space-y-1 text-xs">
-                            <div class="flex justify-between"><span>Show Shortcuts</span><kbd class="kbd">?</kbd></div>
+                            <div class="flex justify-between"><span>Open Help</span><kbd class="kbd">Alt+H</kbd></div>
+                            <div class="flex justify-between"><span>Show Shortcuts</span><kbd class="kbd">Alt+/</kbd></div>
                             <div class="flex justify-between"><span>Close Modal</span><kbd class="kbd">Esc</kbd></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HELP MODAL -->
+            <div id="help-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                <div class="bg-white dark:bg-gray-950 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-3xl w-full max-h-[80vh] flex flex-col animate-slide-in">
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-emerald-500 to-green-600">
+                        <div>
+                            <div class="font-bold text-xl text-white flex items-center gap-2">
+                                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                                </svg>
+                                JSON Tools — Help & Guide
+                            </div>
+                            <div class="text-xs text-emerald-50 mt-1">Quick reference & how-to for all features</div>
+                        </div>
+                        <button id="help-modal-close" class="text-white hover:text-emerald-100 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-y-auto p-6">
+                        <div class="space-y-5">
+                        <section class="pb-4 border-b border-gray-200 dark:border-gray-800">
+                            <h4 class="font-semibold text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">📝</span> Editor Basics
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>Paste or type JSON in the left editor. The tree and schema render in the right panel.</li>
+                                <li>Use <span class="font-mono">Format</span> to prettify JSON, <span class="font-mono">Minify</span> to compact.</li>
+                                <li>Keyboard shortcuts: Ctrl+S (Format), Ctrl+Shift+M (Minify), Ctrl+C (Copy), Ctrl+V (Paste).</li>
+                            </ul>
+                        </section>
+
+                        <section class="pb-4 border-b border-gray-200 dark:border-gray-800">
+                            <h4 class="font-semibold text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">🔍</span> Search (Tree)
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>Type in the tree search box to filter keys, values, and object paths. (Alt+F focuses search)</li>
+                                <li>Use F3 / Alt+G to go to next result, Shift+F3 / Alt+Shift+G to go to previous result.</li>
+                            </ul>
+                        </section>
+
+                        <section class="pb-4 border-b border-gray-200 dark:border-gray-800">
+                            <h4 class="font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">⚡</span> Fixing & Optimizing JSON
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>When invalid JSON is detected, the app suggests fixes and an <span class="font-mono">Optimize JSON</span> option. Click <span class="font-mono">Preview</span> to inspect changes before applying.</li>
+                                <li>To apply a suggested fix: click <span class="font-mono">Apply Fix</span>. For a more aggressive fix, click <span class="font-mono">Optimize JSON</span>.</li>
+                                <li><span class="font-mono">Escape Controls</span> can escape raw control characters inside strings so the JSON parses correctly (useful for pasted text containing newlines).</li>
+                            </ul>
+                        </section>
+
+                        <section class="pb-4 border-b border-gray-200 dark:border-gray-800">
+                            <h4 class="font-semibold text-purple-600 dark:text-purple-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">🎨</span> Key Colors & Palette
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>Each JSON key is assigned a consistent color across the tree and the editor overlay. Click a key in the tree to highlight all occurrences.</li>
+                                <li>Open the schema view to edit key colors and highlight keys via the palette.</li>
+                                <li>Click a color chip to toggle highlighting. Use the inline color-picker to change a key's color; the overlay and tree update instantly.</li>
+                            </ul>
+                        </section>
+                        <section class="pb-4 border-b border-gray-200 dark:border-gray-800">
+                            <h4 class="font-semibold text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">🖌️</span> Editor Overlay & Key Coloring
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>The overlay mirrors the editor and colorizes keys to help visually scan large JSON objects.</li>
+                                <li>Overlay syncs to the textarea's scroll and font size. Highlighting a key in the tree also highlights the overlay entries.</li>
+                            </ul>
+                        </section>
+
+                        <section class="pb-4 border-b border-gray-200 dark:border-gray-800">
+                            <h4 class="font-semibold text-rose-600 dark:text-rose-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">↕️</span> Drag & Drop Reorder
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>Drag an item in the tree to reorder items within the same parent (arrays or objects). Cross-parent moves are not allowed to keep structure safe.</li>
+                                <li>After reordering, the JSON on the left updates automatically (the entire UI re-renders to stay in sync).</li>
+                            </ul>
+                        </section>
+
+                        <section class="pb-4 border-b border-gray-200 dark:border-gray-800">
+                            <h4 class="font-semibold text-cyan-600 dark:text-cyan-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">📥</span> Import cURL
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>Click <span class="font-mono">Import cURL</span> or paste a cURL command into the editor. The app attempts to parse the URL, method, headers, cookies, and body and fetch the response.</li>
+                                <li>Auto-import triggers when a cURL is pasted into an empty editor or after typing a short curl if typing stops.</li>
+                                <li>Note: The browser may block requests due to CORS; you will receive an error if that happens.</li>
+                            </ul>
+                        </section>
+
+                        <section class="pb-4 border-b border-gray-200 dark:border-gray-800">
+                            <h4 class="font-semibold text-teal-600 dark:text-teal-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">📊</span> Schema & ER View
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>Switch to Schema & Stats to view inferred TypeScript interfaces and counts. Use the ER view to visualize relationships.</li>
+                                <li>Switch between Schema and ER via the tabs on the bottom panel.</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h4 class="font-semibold text-orange-600 dark:text-orange-400 mb-2 flex items-center gap-2">
+                                <span class="text-lg">💡</span> Tips & Troubleshooting
+                            </h4>
+                            <ul class="list-disc pl-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                                <li>If your response doesn't render as JSON, try the <span class="font-mono">Optimize</span> or <span class="font-mono">Escape Controls</span> options.</li>
+                                <li>Use the command palette (Alt+K) for quick access to commands and keyboard shortcuts.</li>
+                                <li>Press <kbd class="kbd">Alt+H</kbd> to open this help at any time. Press Escape to close any modal.</li>
+                                <li>If an import fails due to CORS, try using a server-side proxy or enable CORS on the server.</li>
+                            </ul>
+                        </section>
                         </div>
                     </div>
                 </div>
@@ -686,8 +861,40 @@
 
     <style>
         .kbd {
-            @apply px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-300 font-mono text-[10px] border border-gray-300 dark:border-gray-600;
+            padding: 0.125rem 0.375rem;
+            background-color: #e5e7eb;
+            border-radius: 0.25rem;
+            color: #374151;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            border: 1px solid #d1d5db;
         }
+        
+        .dark .kbd {
+            background-color: #374151;
+            color: #d1d5db;
+            border-color: #4b5563;
+        }
+
+        /* JSON overlay syntax highlights */
+        #json-overlay { 
+            caret-color: transparent; /* caret shown in textarea */
+        }
+        .overlay-key { display: inline-block; padding: 0 2px; border-radius: 3px; }
+        .overlay-key.overlay-highlight { background-color: rgba(99,102,241,0.12); }
+        
+        .key-chip input[type="color"] { 
+            -webkit-appearance: none;
+            appearance: none;
+            border: none; 
+            width: 20px; 
+            height: 18px; 
+            padding: 0; 
+            margin: 0;
+            cursor: pointer;
+        }
+        .key-chip input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        .key-chip input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
     </style>
 
     <script type="module">
@@ -695,6 +902,128 @@
         const $ = (sel) => document.querySelector(sel);
         const $$ = (sel) => document.querySelectorAll(sel);
         const escapeHtml = (str) => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        // Deterministic color generator for keys
+        function colorFromString(str) {
+            // FNV-1a hash to produce a number, then map to HSL
+            let hash = 2166136261 >>> 0;
+            for (let i = 0; i < str.length; i++) {
+                hash ^= str.charCodeAt(i);
+                hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+            }
+            const h = hash % 360;
+            const s = 60 + (hash % 20); // saturation 60-79
+            const l = 40 + (hash % 8); // lightness 40-47
+            return `hsl(${h} ${s}% ${l}%)`;
+        }
+
+        function getKeyColor(key) {
+            // allow some customization via state.keyColors; default is keyed color
+            if (typeof state !== 'undefined' && state.keyColors && state.keyColors[key]) return state.keyColors[key];
+            return colorFromString(key);
+        }
+
+        function hslToRgb(h, s, l){
+            // h in [0,360], s,l in [0,100]
+            s /= 100; l /= 100; const k = n => (n + h/30) % 12; const a = s * Math.min(l, 1-l);
+            const f = n => l - a * Math.max(Math.min(k(n)-3, 9-k(n), 1), -1);
+            return [Math.round(255*f(0)), Math.round(255*f(8)), Math.round(255*f(4))];
+        }
+
+        function rgbToHex(r,g,b){
+            return `#${((1<<24) + (r<<16) + (g<<8) + b).toString(16).slice(1)}`;
+        }
+
+        function getKeyColorHex(key) {
+            if (typeof state !== 'undefined' && state.keyColors && state.keyColors[key]) {
+                const val = state.keyColors[key];
+                // accept rgb/hsl/hex - if already hex return
+                if (val.startsWith('#')) return val;
+                // try to parse hsl
+                const m = val.match(/hsl\s*\(\s*([0-9.]+)\s+([0-9.]+)%\s+([0-9.]+)%\s*\)/i);
+                if (m) {
+                    const [_, hh, ss, ll] = m; const [r,g,b] = hslToRgb(Number(hh), Number(ss), Number(ll)); return rgbToHex(r,g,b);
+                }
+                return val;
+            }
+            // default via colorFromString
+            const hsl = colorFromString(key); const m = hsl.match(/hsl\((\d+)\s+(\d+)%\s+(\d+)%\)/);
+            if (!m) return '#888888';
+            const [_, hh, ss, ll] = m; const [r,g,b] = hslToRgb(Number(hh), Number(ss), Number(ll)); return rgbToHex(r,g,b);
+        }
+
+        function parseCurlCommand(cmd) {
+            // Very small parser to extract URL, method and headers from a simple curl command
+            const urlMatch = cmd.match(/\bhttps?:\/\/[\w@:\/.?=&#%+\-_,~]+/i);
+            const url = urlMatch ? urlMatch[0] : null;
+
+            // method detection: -X or --request or if data is present, default to POST
+            let method = 'GET';
+            if (/\-X\s+([A-Z]+)/i.test(cmd)) {
+                method = cmd.match(/\-X\s+([A-Z]+)/i)[1];
+            } else if (/--request\s+([A-Z]+)/i.test(cmd)) {
+                method = cmd.match(/--request\s+([A-Z]+)/i)[1];
+            } else if (/--data|-d|--data-raw|--data-binary/i.test(cmd)) {
+                method = 'POST';
+            }
+
+            const headers = {};
+            // headers -H 'Name: value'
+            const headerRegex = /-H\s+'([^:]+):\s*([^']+)'/g;
+            let hm;
+            while ((hm = headerRegex.exec(cmd)) !== null) {
+                headers[hm[1]] = hm[2];
+            }
+
+            // double quoted headers
+            const headerRegexD = /-H\s+"([^:]+):\s*([^"]+)"/g;
+            while ((hm = headerRegexD.exec(cmd)) !== null) {
+                headers[hm[1]] = hm[2];
+            }
+
+            // cookies -b or --cookie
+            const cookieRegex = /(?:-b|--cookie)\s+'([^']+)'/g;
+            while ((hm = cookieRegex.exec(cmd)) !== null) {
+                headers['Cookie'] = hm[1];
+            }
+
+            // data / body
+            const dataRegex = /(?:--data-raw|--data-binary|--data|\-d)\s+'([^']*)'/g;
+            let dataMatch;
+            let body = null;
+            while ((dataMatch = dataRegex.exec(cmd)) !== null) {
+                body = dataMatch[1];
+                method = 'POST';
+            }
+
+            return { url, method, headers, body };
+        }
+
+        function renderJsonOverlay(text) {
+            const overlay = $('#json-overlay');
+            if (!overlay) return;
+            // Escape HTML
+            const esc = (s) => escapeHtml(s);
+
+            // Replace keys ("key":) with colored spans
+            let html = esc(text);
+
+            // match quoted keys followed by colon
+                html = html.replace(/\"((?:\\.|[^\"\\])*)\"\s*:/g, (m, key) => {
+                const k = key;
+                const color = getKeyColor(k);
+                return `<span class="overlay-key" title="${escapeHtml(k)}" data-key="${escapeHtml(k)}" style="color: ${color}">\"${escapeHtml(k)}\"</span>:`;
+            });
+
+            // Mark highlighted keys (via class on tree/palette)
+            const activeKeys = [...$$('#key-palette .ring-2')].map(b => b.dataset.key);
+            activeKeys.forEach(k => {
+                html = html.replace(new RegExp(`<span class=\"overlay-key\" data-key=\"${escapeHtml(k)}\"[^>]*>([\s\S]*?)<\\/span>`, 'g'), (m) => {
+                    return m.replace('overlay-key', 'overlay-key overlay-highlight');
+                });
+            });
+
+            overlay.innerHTML = html;
+        }
 
         // --- STATE ---
         const state = {
@@ -713,6 +1042,7 @@
             showWarnings: false,
             fullscreenElement: null,
             isErFullscreen: false
+            ,keyColors: {}
         };
 
         // --- THEME ---
@@ -778,6 +1108,85 @@
                     return null;
                 }
             }
+
+            // More aggressive heuristic optimizer that attempts additional
+            // fixes beyond tryFix (comments, Python-like values, boolean casing, etc.)
+            static optimize(text) {
+                let fixed = text;
+
+                // 0. Remove common comment types
+                fixed = fixed.replace(/\/\*([\s\S]*?)\*\//g, ''); // block comments
+                fixed = fixed.replace(/(^|[^:\\])\/\/.*$/gm, '$1'); // single-line
+
+                // 1. Normalize Python booleans/None -> JSON
+                fixed = fixed.replace(/\bTrue\b/g, 'true');
+                fixed = fixed.replace(/\bFalse\b/g, 'false');
+                fixed = fixed.replace(/\bNone\b/g, 'null');
+
+                // 2. Remove trailing commas (arrays/objects)
+                fixed = fixed.replace(/,\s*([\]}])/g, '$1');
+
+                // 3. Fix unquoted keys
+                fixed = fixed.replace(/([{,]\s*)([a-zA-Z0-9_\-]+)(\s*:)/g, '$1"$2"$3');
+
+                // 4. Replace single-quoted strings with double quotes when safe
+                // This is conservative: only replace single quotes that look like string values
+                fixed = fixed.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
+
+                // 5. Convert trailing commas for arrays: '[, 1, 2' -> '[1, 2'
+                fixed = fixed.replace(/\[\s*,/g, '[');
+
+                // 6. Fix dangling commas before close (again, cleanup pass)
+                fixed = fixed.replace(/,\s*}\s*$/m, '}');
+
+                // Try parse and return if valid
+                try {
+                    JSON.parse(fixed);
+                    return fixed;
+                } catch (e) {
+                    // If not valid, try a weaker pass where we wrap top-level in array/object
+                    try {
+                        let wrapped = fixed.trim();
+                        if (!wrapped.startsWith('{') && !wrapped.startsWith('[')) {
+                            // try to wrap with {} and [] to allow parsing
+                            try {
+                                JSON.parse('{' + wrapped + '}');
+                                return '{' + wrapped + '}';
+                            } catch (err) {
+                                try {
+                                    JSON.parse('[' + wrapped + ']');
+                                    return '[' + wrapped + ']';
+                                } catch (err2) {
+                                    return null;
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        return null;
+                    }
+                    return null;
+                }
+            }
+
+            static escapeControlCharsInStrings(text) {
+                try {
+                    // Replace raw control characters inside string literals with escaped equivalents
+                    return text.replace(/"((?:[^"\\]|\\.)*)"/gs, (m, inner) => {
+                        // Only transform real control characters, not escape sequences
+                        let replaced = inner
+                            .replace(/\r/g, '\\r')
+                            .replace(/\n/g, '\\n')
+                            .replace(/\t/g, '\\t')
+                            .replace(/\x08/g, '\\b')
+                            .replace(/\f/g, '\\f')
+                            .replace(/\x0b/g, '\\u000b')
+                            .replace(/\x00/g, '\\u0000');
+                        return '"' + replaced + '"';
+                    });
+                } catch (e) {
+                    return text;
+                }
+            }
         }
 
         // --- RENDERER ---
@@ -818,7 +1227,7 @@
                             const keyPath = `${path}['${key}']`;
                             contentHtml += `<div class="my-0.5 hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 flex items-start draggable-item group/item relative" draggable="true" data-path="${keyPath}" data-key="${escapeHtml(key)}" data-parent="${path}">
                                 <span class="drag-handle opacity-0 group-hover/item:opacity-100 absolute -left-4 top-1 cursor-move text-gray-400 hover:text-indigo-500" title="Drag to reorder">⋮⋮</span>
-                                <span class="syntax-key mr-1">"${escapeHtml(key)}":</span>
+                                <span class="syntax-key mr-1" data-key="${escapeHtml(key)}" style="color: ${getKeyColor(key)}">"${escapeHtml(key)}":</span>
                                 ${this.render(val, keyPath, level + 1)}
                             </div>`;
                         });
@@ -1309,6 +1718,9 @@
                 this.initCommandPalette();
                 this.initKeyboardShortcuts();
                 this.applyZoom();
+                this.lastAutoImportedCurl = null; // store last auto-imported curl text to avoid loops
+                this._lastInput = '';
+                this._curlDebounceTimer = null;
             }
 
             initResizers() {
@@ -1513,13 +1925,22 @@
                 if (!state.json) return;
 
                 // Navigate to the parent object/array
-                const pathParts = parentPath.split(/[\[\]'.]/).filter(p => p && p !== '$');
-                let parent = state.json;
-
-                for (const part of pathParts) {
-                    if (parent[part] !== undefined) {
-                        parent = parent[part];
+                // Parse the parentPath like $['a']['b'][0] into parts safely
+                const parseJsonPathParts = (p) => {
+                    const parts = [];
+                    const bracketRegex = /\[['"]([^'"]+)['"]\]|\[(\d+)\]/g;
+                    let m;
+                    while ((m = bracketRegex.exec(p)) !== null) {
+                        if (m[1] !== undefined) parts.push(m[1]);
+                        else if (m[2] !== undefined) parts.push(Number(m[2]));
                     }
+                    return parts;
+                };
+                const pathParts = parseJsonPathParts(parentPath);
+                let parent = state.json;
+                for (const part of pathParts) {
+                    if (parent === undefined || parent === null) return; // invalid path
+                    parent = parent[part];
                 }
 
                 if (Array.isArray(parent)) {
@@ -1555,14 +1976,21 @@
                 // Update the input and re-render
                 const newJson = JSON.stringify(state.json, null, 2);
                 $('#json-input').value = newJson;
-                state.raw = newJson;
-                this.renderTree(state.json);
+                // Use the usual input handler so linter, overlay, schema and panels are updated consistently
+                this.handleInput(newJson);
                 this.showToast('✅ Items reordered');
             }
 
             initEventListeners() {
                 // Input Handling
                 $('#json-input').addEventListener('input', (e) => this.handleInput(e.target.value));
+                // Sync overlay scroll with textarea
+                $('#json-input').addEventListener('scroll', (e) => {
+                    const overlay = $('#json-overlay');
+                    if (!overlay) return;
+                    overlay.scrollTop = e.target.scrollTop;
+                    overlay.scrollLeft = e.target.scrollLeft;
+                });
 
                 // Toolbar
                 $('#btn-format').onclick = () => {
@@ -1609,6 +2037,20 @@
                     };
                 });
 
+                // Help modal handlers
+                $('#btn-help')?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    $('#help-modal')?.classList.remove('hidden');
+                });
+                $('#help-modal-close')?.addEventListener('click', () => {
+                    $('#help-modal')?.classList.add('hidden');
+                });
+                $('#help-modal')?.addEventListener('click', (e) => {
+                    if (e.target === $('#help-modal')) {
+                        $('#help-modal')?.classList.add('hidden');
+                    }
+                });
+
                 // Tree Controls
                 $('#btn-expand').onclick = () => $$('#tree-container div[id$="-content"]').forEach(el => el.classList.remove('hidden'));
                 $('#btn-collapse').onclick = () => $$('#tree-container div[id$="-content"]').forEach(el => el.classList.add('hidden'));
@@ -1637,6 +2079,37 @@
                 // Path Listener
                 window.addEventListener('show-path', (e) => {
                     this.showToast(`Path: ${e.detail}`);
+                });
+
+                // Highlight keys when clicked in tree
+                $('#tree-container').addEventListener('click', (e) => {
+                    const keyEl = e.target.closest('.syntax-key');
+                    if (!keyEl) return;
+                    const key = keyEl.dataset.key;
+                    if (!key) return;
+
+                    // Toggle highlight for this key
+                    const active = keyEl.classList.toggle('highlighted-key');
+                    const all = $$('#tree-container .syntax-key');
+                    all.forEach(el => {
+                        if (el.dataset.key === key) {
+                            if (active) el.classList.add('bg-indigo-500/20');
+                            else el.classList.remove('bg-indigo-500/20');
+                        }
+                    });
+                    this.showToast(`${active ? 'Highlighted' : 'Unhighlighted'} key: ${key}`);
+                    // Toggle overlay highlight
+                    const overlayKeys = $$('#json-overlay .overlay-key');
+                    overlayKeys.forEach(ok => {
+                        if (ok.dataset.key === key) {
+                            if (active) ok.classList.add('overlay-highlight');
+                            else ok.classList.remove('overlay-highlight');
+                        }
+                    });
+                    // Toggle palette chip state if present
+                    $$('#key-palette .key-chip').forEach(b => {
+                        if (b.dataset.key === key) b.classList.toggle('ring-2');
+                    });
                 });
 
                 // Diff
@@ -1672,7 +2145,7 @@
                 });
 
                 document.addEventListener('keydown', (e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                    if (e.altKey && e.key === 'f') {
                         e.preventDefault();
                         $('#tree-search').focus();
                     }
@@ -1715,6 +2188,17 @@
                         };
                         reader.readAsText(file);
                     }
+                });
+
+                // Listen to paste events to detect cURL quickly
+                $('#json-input').addEventListener('paste', (e) => {
+                    try {
+                        const pasted = (e.clipboardData || window.clipboardData).getData('text');
+                        if (/^\s*curl\b/i.test(pasted)) {
+                            // Slight delay to let paste happen then auto import
+                            setTimeout(() => this.tryAutoImportCurl(pasted), 300);
+                        }
+                    } catch (err) { /* ignore */ }
                 });
 
                 // Warnings Toggle
@@ -1763,11 +2247,11 @@
 
             initKeyboardShortcuts() {
                 document.addEventListener('keydown', (e) => {
-                    // Ctrl/Cmd + K: Command Palette (handled in initCommandPalette)
-                    // Ctrl/Cmd + F: Search in tree (handled above)
+                    // Alt + K: Command Palette (handled in initCommandPalette)
+                    // Alt + F: Search in tree (handled above)
 
-                    // Ctrl/Cmd + S: Format JSON
-                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    // Alt + S: Format JSON
+                    if (e.altKey && e.key === 's') {
                         e.preventDefault();
                         if (state.json) {
                             const formatted = JSON.stringify(state.json, null, 2);
@@ -1777,8 +2261,8 @@
                         }
                     }
 
-                    // Ctrl/Cmd + Shift + M: Minify JSON
-                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M') {
+                    // Alt + Shift + M: Minify JSON
+                    if (e.altKey && e.shiftKey && e.key === 'M') {
                         e.preventDefault();
                         if (state.json) {
                             const minified = JSON.stringify(state.json);
@@ -1788,8 +2272,8 @@
                         }
                     }
 
-                    // Ctrl/Cmd + C: Copy JSON (when not in input)
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && document.activeElement !== $('#json-input')) {
+                    // Alt + C: Copy JSON (when not in input)
+                    if (e.altKey && e.key === 'c' && document.activeElement !== $('#json-input')) {
                         if (!window.getSelection().toString()) {
                             e.preventDefault();
                             navigator.clipboard.writeText($('#json-input').value);
@@ -1797,76 +2281,104 @@
                         }
                     }
 
-                    // Ctrl/Cmd + V: Paste JSON
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'v' && document.activeElement === $('#json-input')) {
-                        // Let default paste happen
+                    // Alt + Shift + V or Ctrl + V: Paste JSON
+                    if ((e.altKey && e.shiftKey && e.key === 'V') || ((e.ctrlKey || e.metaKey) && e.key === 'v' && document.activeElement !== $('#json-input'))) {
+                        e.preventDefault();
+                        navigator.clipboard.readText().then(text => {
+                            const input = $('#json-input');
+                            input.value = text;
+                            input.focus();
+                            this.handleInput(text);
+                            this.showToast('📋 Pasted from clipboard');
+                        }).catch(err => {
+                            this.showToast('❌ Clipboard access denied');
+                        });
                     }
 
-                    // Ctrl/Cmd + E: Expand All
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                    // Alt + E: Expand All
+                    if (e.altKey && e.key === 'e') {
                         e.preventDefault();
                         $$('#tree-container div[id$="-content"]').forEach(el => el.classList.remove('hidden'));
                         this.showToast('📂 All Expanded');
                     }
 
-                    // Ctrl/Cmd + Shift + E: Collapse All
-                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
+                    // Alt + Shift + E: Collapse All
+                    if (e.altKey && e.shiftKey && e.key === 'E') {
                         e.preventDefault();
                         $$('#tree-container div[id$="-content"]').forEach(el => el.classList.add('hidden'));
                         this.showToast('📁 All Collapsed');
                     }
 
-                    // Ctrl/Cmd + D: Toggle Diff View
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                    // Alt + D: Toggle Diff View
+                    if (e.altKey && e.key === 'd') {
                         e.preventDefault();
                         this.switchMode('diff');
                     }
 
-                    // Ctrl/Cmd + 1: Analyze View
-                    if ((e.ctrlKey || e.metaKey) && e.key === '1') {
+                    // Alt + H: Open Help Modal
+                    if (e.altKey && e.key === 'h') {
+                        e.preventDefault();
+                        $('#help-modal')?.classList.remove('hidden');
+                    }
+
+                    // Escape: Close any open modal
+                    if (e.key === 'Escape') {
+                        // Close help modal if open
+                        if ($('#help-modal') && !$('#help-modal').classList.contains('hidden')) {
+                            $('#help-modal').classList.add('hidden');
+                        }
+                        // Close curl import modal if open
+                        if ($('#curl-modal') && !$('#curl-modal').classList.contains('hidden')) {
+                            $('#curl-modal').classList.add('hidden');
+                        }
+                        // Command palette escape is handled in initCommandPalette
+                    }
+
+                    // Alt + 1: Analyze View
+                    if (e.altKey && e.key === '1') {
                         e.preventDefault();
                         this.switchMode('analyze');
                     }
 
-                    // Ctrl/Cmd + T: Toggle Theme
-                    if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+                    // Alt + T: Toggle Theme
+                    if (e.altKey && e.key === 't') {
                         e.preventDefault();
                         toggleTheme();
                         this.showToast(`🎨 ${state.theme === 'dark' ? 'Dark' : 'Light'} Mode`);
                     }
 
-                    // Ctrl/Cmd + =: Zoom In (active panel)
-                    if ((e.ctrlKey || e.metaKey) && e.key === '=') {
+                    // Alt + =: Zoom In (active panel)
+                    if (e.altKey && e.key === '=') {
                         e.preventDefault();
                         this.zoomPanel('in');
                     }
 
-                    // Ctrl/Cmd + -: Zoom Out (active panel)
-                    if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                    // Alt + -: Zoom Out (active panel)
+                    if (e.altKey && e.key === '-') {
                         e.preventDefault();
                         this.zoomPanel('out');
                     }
 
-                    // Ctrl/Cmd + 0: Reset Zoom
-                    if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                    // Alt + 0: Reset Zoom
+                    if (e.altKey && e.key === '0') {
                         e.preventDefault();
                         this.zoomPanel('reset');
                     }
 
-                    // F3 or Ctrl/Cmd + G: Next Search Result
-                    if (e.key === 'F3' || ((e.ctrlKey || e.metaKey) && e.key === 'g' && !e.shiftKey)) {
+                    // F3 or Alt + G: Next Search Result
+                    if (e.key === 'F3' || (e.altKey && e.key === 'g' && !e.shiftKey)) {
                         e.preventDefault();
                         this.navigateSearch('next');
                     }
 
-                    // Shift + F3 or Ctrl/Cmd + Shift + G: Previous Search Result
-                    if ((e.shiftKey && e.key === 'F3') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'G')) {
+                    // Shift + F3 or Alt + Shift + G: Previous Search Result
+                    if ((e.shiftKey && e.key === 'F3') || (e.altKey && e.shiftKey && e.key === 'G')) {
                         e.preventDefault();
                         this.navigateSearch('prev');
                     }
 
-                    // ? : Show Keyboard Shortcuts
-                    if (e.key === '?' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    // Alt + /: Show Keyboard Shortcuts
+                    if (e.altKey && e.key === '/') {
                         e.preventDefault();
                         $('#shortcuts-modal').classList.remove('hidden');
                     }
@@ -1978,6 +2490,8 @@
 
             applyZoom() {
                 $('#json-input').style.fontSize = `${14 * state.zoom.input}px`;
+                const overlay = $('#json-overlay');
+                if (overlay) overlay.style.fontSize = `${14 * state.zoom.input}px`;
                 $('#tree-container').style.fontSize = `${14 * state.zoom.tree}px`;
                 $('#schema-view').style.fontSize = `${12 * state.zoom.schema}px`;
             }
@@ -2026,10 +2540,14 @@
 
                 // Find matches
                 allItems.forEach(el => {
-                    const key = el.querySelector('.syntax-key')?.textContent || '';
-                    const val = el.querySelector('[class^="syntax-"]:not(.syntax-key)')?.textContent || '';
+                    const keyEl = el.querySelector('.syntax-key');
+                    // Prefer the data-key attribute if present (no quotes), else strip quotes from textContent like '"key":'
+                    const key = (keyEl?.dataset?.key) || (keyEl?.textContent || '').replace(/^\"|\":$/g, '').trim();
+                    const valEl = el.querySelector('[class^="syntax-"]:not(.syntax-key)');
+                    const val = (valEl?.textContent || '').trim();
 
-                    if (key.toLowerCase().includes(lowerQuery) || val.toLowerCase().includes(lowerQuery)) {
+                    const pathAttr = (el.dataset.path || '').toLowerCase();
+                    if ((key && key.toLowerCase().includes(lowerQuery)) || (val && val.toLowerCase().includes(lowerQuery)) || pathAttr.includes(lowerQuery)) {
                         // Highlight match
                         el.classList.add('search-highlight', 'bg-yellow-200', 'dark:bg-yellow-900');
                         state.searchResults.push(el);
@@ -2059,22 +2577,56 @@
             }
 
             handleInput(text) {
+                const prevInput = this._lastInput || '';
                 state.raw = text;
+                // Render overlay even if JSON is invalid so keys are colored while editing
+                renderJsonOverlay(text);
+                // If user pasted a curl command into the input, automatically import
+                try {
+                    if (/^\s*curl\b/i.test(text) && text !== this.lastAutoImportedCurl) {
+                        // avoid unnecessary auto-imports while typing; allow auto-import when starting from an empty input
+                        const fromEmpty = prevInput.trim() === '';
+                        if (fromEmpty || text.length > 50 || text.includes('\n')) {
+                            this.tryAutoImportCurl(text);
+                        } else {
+                            // Debounce typed short curl commands: wait until typing stops before importing
+                            clearTimeout(this._curlDebounceTimer);
+                            this._curlDebounceTimer = setTimeout(() => {
+                                // only import if still starts with curl & not already imported
+                                if (/^\s*curl\b/i.test(this._lastInput) && this.lastAutoImportedCurl !== this._lastInput) {
+                                    this.tryAutoImportCurl(this._lastInput);
+                                }
+                            }, 700);
+                        }
+                    } else {
+                        clearTimeout(this._curlDebounceTimer);
+                    }
+                } catch (err) {
+                    // ignore
+                }
                 const { data, error } = JsonParser.parse(text);
                 const container = $('#tree-container');
 
                 if (error) {
                     state.json = null;
 
-                    // Try to auto-fix
+                    // Try to auto-fix (basic) and also provide an aggressive optimizer
                     const fixed = JsonParser.tryFix(text);
+                    const optimized = JsonParser.optimize(text);
+                    const hasControlCharError = /control character|bad control character|invalid control character/i.test(error || '');
                     let fixHtml = '';
-                    if (fixed) {
+                    if (fixed || optimized) {
                         fixHtml = `
                             <div class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
                                 <p class="text-green-700 dark:text-green-300 font-bold mb-2">✨ Auto-Fix Available!</p>
                                 <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">We detected common issues (trailing commas, unquoted keys, single quotes) and can fix them automatically.</p>
-                                <button id="btn-apply-fix" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium">Apply Fix</button>
+                                <div class="flex gap-2 items-center">
+                                    ${fixed ? '<button id="btn-apply-fix" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium">Apply Fix</button>' : ''}
+                                    <button id="btn-apply-optimize" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-xs font-medium">Optimize JSON</button>
+                                    ${hasControlCharError ? '<button id="btn-escape-controls" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-medium">Escape Controls</button>' : ''}
+                                    <button id="btn-preview-optimized" class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-2 py-1 rounded text-xs text-gray-700 dark:text-gray-200">Preview</button>
+                                </div>
+                                <div id="optimized-preview" class="mt-3 hidden bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded p-2 font-mono text-xs whitespace-pre overflow-auto max-h-40"></div>
                             </div>
                         `;
                     }
@@ -2090,14 +2642,53 @@
                         </div>
                     `;
 
-                    if (fixed) {
+                    if (fixed || optimized) {
                         setTimeout(() => {
                             const applyBtn = $('#btn-apply-fix');
+                            const optimizeBtn = $('#btn-apply-optimize');
+                            const escapeBtn = $('#btn-escape-controls');
+                            const previewBtn = $('#btn-preview-optimized');
+                            const previewEl = $('#optimized-preview');
                             if (applyBtn) {
                                 applyBtn.onclick = () => {
                                     $('#json-input').value = fixed;
                                     this.handleInput(fixed);
                                     this.showToast('Auto-fix applied!');
+                                };
+                            }
+                            if (previewBtn) {
+                                previewBtn.onclick = () => {
+                                    const previewText = optimized || fixed || '';
+                                    if (!previewText) {
+                                        this.showToast('No optimization available');
+                                        return;
+                                    }
+                                    previewEl.textContent = previewText;
+                                    previewEl.classList.toggle('hidden');
+                                };
+                            }
+                            if (escapeBtn) {
+                                escapeBtn.onclick = () => {
+                                    const escapedText = JsonParser.escapeControlCharsInStrings(text);
+                                    if (!escapedText || escapedText === text) {
+                                        this.showToast('No control characters found or no change needed');
+                                        return;
+                                    }
+                                    $('#json-input').value = escapedText;
+                                    this.handleInput(escapedText);
+                                    this.showToast('Control characters escaped');
+                                };
+                            }
+                            if (optimizeBtn) {
+                                optimizeBtn.onclick = () => {
+                                    const optimizedText = optimized || fixed;
+                                    if (!optimizedText) {
+                                        this.showToast('No optimization could be applied');
+                                        return;
+                                    }
+                                    $('#json-input').value = optimizedText;
+                                    this.handleInput(optimizedText);
+                                    this.showToast('Optimization applied!');
                                 };
                             }
                         }, 0);
@@ -2110,6 +2701,8 @@
 
                     // Clear sidebar
                     $('#object-nav').innerHTML = '<div class="text-gray-400 text-center mt-4 text-xs italic">No structure</div>';
+                    // persist last input even when invalid to ensure empty->curl detection works
+                    this._lastInput = text;
                     return;
                 }
 
@@ -2121,6 +2714,8 @@
 
                 // Render Tree
                 container.innerHTML = TreeRenderer.render(data);
+                // Render overlay for input JSON with key colors
+                renderJsonOverlay(state.raw);
 
                 // Show linter warnings in tree if any (only if showWarnings is true)
                 if (state.showWarnings && linterResults.warnings.length > 0) {
@@ -2134,6 +2729,10 @@
                 // Update other panels
                 this.updateSidebar(data);
                 this.updateSchema(data);
+
+                // persist a snapshot of the last input so we can detect transitions from empty
+                // (always persisted, even if invalid JSON, to support 'clear -> paste curl' detection)
+                this._lastInput = text;
             }
 
             updateLinterUI(parseError, linterResults) {
@@ -2247,7 +2846,21 @@
             updateSchema(data) {
                 const stats = SchemaEngine.getStats(data);
                 const type = SchemaEngine.infer(data);
-
+                // Build key palette
+                const buildKeyPalette = (obj) => {
+                    const counts = {};
+                    const traverse = (o) => {
+                        if (!o || typeof o !== 'object') return;
+                        if (Array.isArray(o)) return o.forEach(i => traverse(i));
+                        Object.entries(o).forEach(([k, v]) => {
+                            counts[k] = (counts[k] || 0) + 1;
+                            traverse(v);
+                        });
+                    };
+                    traverse(obj);
+                    return counts;
+                };
+                const keyCounts = buildKeyPalette(data);
                 $('#schema-view').innerHTML = `
                     <div class="grid grid-cols-3 gap-2 mb-2">
                         <div class="bg-gray-100 dark:bg-gray-800 p-2 rounded">
@@ -2267,7 +2880,63 @@
                         <div class="text-gray-500 text-[10px] uppercase mb-1">Inferred Type</div>
                         <code class="text-emerald-500 whitespace-pre">${escapeHtml(type)}</code>
                     </div>
+                    <div class="bg-gray-50 dark:bg-gray-900 mt-3 p-2 rounded">
+                        <div class="text-gray-500 text-[10px] uppercase mb-1">Key Palette</div>
+                                <div id="key-palette" class="flex flex-wrap gap-1">
+                                    ${Object.entries(keyCounts).map(([k, c]) => {
+                                        const color = getKeyColor(k);
+                                        const hex = getKeyColorHex(k);
+                                        return `<button data-key="${escapeHtml(k)}" class="key-chip flex items-center gap-2 px-2 py-1 rounded text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800" style="color: ${color}"><span class="w-2 h-2 rounded-full key-chip-color" style="background: ${color}"></span><span class="truncate">${escapeHtml(k)}</span><span class="ml-2 text-gray-400 text-[10px]">${c}</span><input type=\"color\" class=\"ml-2 key-color-picker\" value=\"${hex}\" title=\"Change color\" style=\"width:22px;height:22px;border:none;padding:0;background:transparent\"/></button>`;
+                                    }).join('')}
+                        </div>
+                    </div>
                 `;
+
+                // Add event handlers for palette chips
+                setTimeout(() => {
+                            $$('#key-palette .key-chip').forEach(btn => {
+                        btn.onclick = () => {
+                            const key = btn.dataset.key;
+                            // Toggle highlight for this key
+                            const all = $$('#tree-container .syntax-key');
+                            const active = btn.classList.toggle('ring-2');
+                            all.forEach(el => {
+                                if (el.dataset?.key === key) {
+                                    if (active) {
+                                        el.classList.add('bg-indigo-500/20');
+                                    } else {
+                                        el.classList.remove('bg-indigo-500/20');
+                                    }
+                                }
+                            });
+                            // Toggle overlay highlight for this key
+                            const overlayKeys = $$('#json-overlay .overlay-key');
+                            overlayKeys.forEach(ok => {
+                                if (ok.dataset.key === key) {
+                                    if (active) ok.classList.add('overlay-highlight');
+                                    else ok.classList.remove('overlay-highlight');
+                                }
+                            });
+                        };
+                        // color picker handler
+                        const colorInput = btn.querySelector('.key-color-picker');
+                        if (colorInput) {
+                            colorInput.addEventListener('input', (evt) => {
+                                const colorVal = evt.target.value;
+                                const k = btn.dataset.key;
+                                if (!state.keyColors) state.keyColors = {};
+                                state.keyColors[k] = colorVal;
+                                // Update swatch
+                                const sw = btn.querySelector('.key-chip-color');
+                                if (sw) sw.style.background = colorVal;
+                                // Re-render tree and overlay
+                                if (state.json) app.renderTree(state.json);
+                                renderJsonOverlay(state.raw);
+                                app.showToast(`Color updated for ${k}`);
+                            });
+                        }
+                    });
+                }, 0);
             }
 
             runDiff() {
@@ -2307,27 +2976,78 @@
                 }
             }
 
+            async tryAutoImportCurl(curText) {
+                try {
+                    const parsed = parseCurlCommand(curText);
+                    if (!parsed || !parsed.url) return;
+                    // Don't re-run for the same curl text
+                    if (this.lastAutoImportedCurl === curText) return;
+                    this.lastAutoImportedCurl = curText;
+                    this.showToast('Detected cURL — importing...');
+                    const fetchOptions = { method: parsed.method || 'GET', headers: parsed.headers || {} };
+                    if (parsed.body) {
+                        fetchOptions.body = parsed.body;
+                        if (!fetchOptions.headers['Content-Type'] && !fetchOptions.headers['content-type']) {
+                            fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                        }
+                    }
+                    const resp = await fetch(parsed.url, fetchOptions);
+                    if (!resp.ok) {
+                        this.showToast(`Import failed: ${resp.status} ${resp.statusText}`);
+                        return;
+                    }
+                    const text = await resp.text();
+                    let parsedJson = null;
+                    try {
+                        parsedJson = JSON.parse(text);
+                    } catch (_) {
+                        // If not JSON, try to extract JSON inside HTML body
+                        // Very simple attempt: find first '{' and '}' pairs
+                        const idx = text.indexOf('{');
+                        const last = text.lastIndexOf('}');
+                        if (idx >= 0 && last > idx) {
+                            try { parsedJson = JSON.parse(text.substring(idx, last + 1)); } catch (err) { parsedJson = null; }
+                        }
+                    }
+                    if (parsedJson) {
+                        const formatted = JSON.stringify(parsedJson, null, 2);
+                        $('#json-input').value = formatted;
+                        this.handleInput(formatted);
+                        this.showToast('Imported JSON from cURL');
+                    } else {
+                        // If not JSON, insert raw text but inform the user
+                        $('#json-input').value = text;
+                        this.handleInput(text);
+                        this.showToast('Imported response (not JSON) from cURL');
+                    }
+                } catch (err) {
+                    this.showToast('cURL import error: ' + err.message);
+                }
+            }
+
             initCommandPalette() {
                 const modal = $('#cmd-palette');
                 const input = $('#cmd-input');
                 const list = $('#cmd-list');
 
                 const commands = [
-                    { label: 'Format JSON', shortcut: 'Ctrl+S', action: () => $('#btn-format').click() },
-                    { label: 'Minify JSON', shortcut: 'Ctrl+Shift+M', action: () => $('#btn-minify').click() },
-                    { label: 'Copy JSON', shortcut: 'Ctrl+C', action: () => $('#btn-copy').click() },
-                    { label: 'Paste JSON', shortcut: 'Ctrl+V', action: () => $('#btn-paste').click() },
-                    { label: 'Expand All', shortcut: 'Ctrl+E', action: () => $('#btn-expand').click() },
-                    { label: 'Collapse All', shortcut: 'Ctrl+Shift+E', action: () => $('#btn-collapse').click() },
-                    { label: 'Search in Tree', shortcut: 'Ctrl+F', action: () => $('#tree-search').focus() },
-                    { label: 'Next Search Result', shortcut: 'F3 / Ctrl+G', action: () => this.navigateSearch('next') },
-                    { label: 'Previous Search Result', shortcut: 'Shift+F3 / Ctrl+Shift+G', action: () => this.navigateSearch('prev') },
-                    { label: 'Toggle Theme', shortcut: 'Ctrl+T', action: () => toggleTheme() },
-                    { label: 'Switch to Analyze View', shortcut: 'Ctrl+1', action: () => this.switchMode('analyze') },
-                    { label: 'Switch to Diff View', shortcut: 'Ctrl+D', action: () => this.switchMode('diff') },
-                    { label: 'Zoom In', shortcut: 'Ctrl+=', action: () => this.zoomPanel('in') },
-                    { label: 'Zoom Out', shortcut: 'Ctrl+-', action: () => this.zoomPanel('out') },
-                    { label: 'Reset Zoom', shortcut: 'Ctrl+0', action: () => this.zoomPanel('reset') }
+                    { label: 'Format JSON', shortcut: 'Alt+S', action: () => $('#btn-format').click() },
+                    { label: 'Minify JSON', shortcut: 'Alt+Shift+M', action: () => $('#btn-minify').click() },
+                    { label: 'Copy JSON', shortcut: 'Alt+C', action: () => $('#btn-copy').click() },
+                    { label: 'Paste JSON', shortcut: 'Ctrl+V / Alt+Shift+V', action: () => $('#btn-paste').click() },
+                    { label: 'Expand All', shortcut: 'Alt+E', action: () => $('#btn-expand').click() },
+                    { label: 'Collapse All', shortcut: 'Alt+Shift+E', action: () => $('#btn-collapse').click() },
+                    { label: 'Search in Tree', shortcut: 'Alt+F', action: () => $('#tree-search').focus() },
+                    { label: 'Next Search Result', shortcut: 'F3 / Alt+G', action: () => this.navigateSearch('next') },
+                    { label: 'Previous Search Result', shortcut: 'Shift+F3 / Alt+Shift+G', action: () => this.navigateSearch('prev') },
+                    { label: 'Toggle Theme', shortcut: 'Alt+T', action: () => toggleTheme() },
+                    { label: 'Switch to Analyze View', shortcut: 'Alt+1', action: () => this.switchMode('analyze') },
+                    { label: 'Switch to Diff View', shortcut: 'Alt+D', action: () => this.switchMode('diff') },
+                    { label: 'Zoom In', shortcut: 'Alt+=', action: () => this.zoomPanel('in') },
+                    { label: 'Zoom Out', shortcut: 'Alt+-', action: () => this.zoomPanel('out') },
+                    { label: 'Reset Zoom', shortcut: 'Alt+0', action: () => this.zoomPanel('reset') },
+                    { label: 'Open Help', shortcut: 'Alt+H', action: () => $('#help-modal')?.classList.remove('hidden') },
+                    { label: 'Show Shortcuts', shortcut: 'Alt+/', action: () => $('#shortcuts-modal')?.classList.remove('hidden') }
                 ];
 
                 const renderCommands = (filter = '') => {
@@ -2364,7 +3084,7 @@
                 const close = () => modal.classList.add('hidden');
 
                 document.addEventListener('keydown', (e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                    if (e.altKey && e.key === 'k') {
                         e.preventDefault();
                         open();
                     }
@@ -2377,6 +3097,59 @@
                 // Close on click outside
                 modal.onclick = (e) => {
                     if (e.target === modal) close();
+                };
+            
+                // Set up Import cURL modal behavior
+                $('#btn-import-curl').onclick = (e) => {
+                    e.stopPropagation();
+                    $('#curl-modal').classList.remove('hidden');
+                    $('#curl-feedback').classList.add('hidden');
+                    $('#curl-input').value = '';
+                    $('#curl-input').focus();
+                };
+                $('#curl-modal-close').onclick = () => { $('#curl-modal').classList.add('hidden'); };
+                $('#curl-cancel').onclick = () => { $('#curl-modal').classList.add('hidden'); };
+                $('#curl-modal').onclick = (e) => { if (e.target === $('#curl-modal')) $('#curl-modal').classList.add('hidden'); };
+                $('#curl-import').onclick = async () => {
+                    const cmd = $('#curl-input').value.trim();
+                    if (!cmd) {
+                        $('#curl-feedback').textContent = 'Please paste a cURL command.';
+                        $('#curl-feedback').classList.remove('hidden');
+                        return;
+                    }
+                    try {
+                        const parsed = parseCurlCommand(cmd);
+                        if (!parsed.url) {
+                            $('#curl-feedback').textContent = 'Could not find URL in cURL command.';
+                            $('#curl-feedback').classList.remove('hidden');
+                            return;
+                        }
+                        // Perform the fetch
+                        const fetchOptions = { method: parsed.method || 'GET', headers: parsed.headers };
+                        if (parsed.body) {
+                            fetchOptions.body = parsed.body;
+                            // attempt to set content-type if not present
+                            if (!fetchOptions.headers['Content-Type'] && !fetchOptions.headers['content-type']) {
+                                fetchOptions.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+                            }
+                        }
+                        const resp = await fetch(parsed.url, fetchOptions);
+                        if (!resp.ok) {
+                            $('#curl-feedback').textContent = `Fetch failed: ${resp.status} ${resp.statusText}`;
+                            $('#curl-feedback').classList.remove('hidden');
+                            return;
+                        }
+                        const text = await resp.text();
+                        // Try to detect JSON; if not JSON, still set text
+                        try { JSON.parse(text); } catch(e) {}
+                        $('#json-input').value = text;
+                        $('#curl-modal').classList.add('hidden');
+                        app.handleInput(text);
+                        app.showToast('Imported JSON from URL');
+                    } catch (err) {
+                        $('#curl-feedback').textContent = 'Import failed: ' + err.message;
+                        $('#curl-feedback').classList.remove('hidden');
+                    }
                 };
             }
 
