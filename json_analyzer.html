@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Advanced Analysis & Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        gray: {
+                            750: '#2d3748',
+                            850: '#1a202c',
+                            950: '#0d1117',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.2s ease-out',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+        }
+
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        /* Tree Lines */
+        .tree-guide {
+            border-left: 1px solid;
+            @apply border-gray-200 dark:border-gray-700;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0.5rem;
+        }
+
+        /* Syntax Highlighting Colors */
+        .syntax-key {
+            @apply text-sky-600 dark:text-sky-300;
+        }
+
+        .syntax-string {
+            @apply text-emerald-600 dark:text-emerald-300;
+        }
+
+        .syntax-number {
+            @apply text-rose-500 dark:text-rose-300;
+        }
+
+        .syntax-boolean {
+            @apply text-amber-500 dark:text-amber-300;
+        }
+
+        .syntax-null {
+            @apply text-gray-500 dark:text-gray-400;
+        }
+
+        /* Editor Line Numbers */
+        .line-numbers {
+            counter-reset: line;
+        }
+
+        .line-numbers>div::before {
+            counter-increment: line;
+            content: counter(line);
+            display: inline-block;
+            width: 2rem;
+            text-align: right;
+            margin-right: 1rem;
+            @apply text-gray-400 dark:text-gray-600 select-none;
+        }
+
+        /* Resizer */
+        .resizer {
+            position: relative;
+            transition: background 0.2s;
+            user-select: none;
+        }
+
+        .resizer-horizontal {
+            cursor: col-resize;
+            width: 6px;
+            min-width: 6px;
+            background: transparent;
+        }
+
+        .resizer-horizontal::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 3px;
+            height: 40px;
+            background: #d1d5db;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        .dark .resizer-horizontal::before {
+            background: #4b5563;
+        }
+
+        .resizer-horizontal:hover::before,
+        .resizer-horizontal.active::before {
+            background: #6366f1;
+            width: 4px;
+            height: 60px;
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+        }
+
+        .resizer-vertical {
+            cursor: row-resize;
+            height: 6px;
+            min-height: 6px;
+            background: transparent;
+        }
+
+        .resizer-vertical::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            height: 3px;
+            width: 40px;
+            background: #d1d5db;
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+
+        .dark .resizer-vertical::before {
+            background: #4b5563;
+        }
+
+        .resizer-vertical:hover::before,
+        .resizer-vertical.active::before {
+            background: #6366f1;
+            height: 4px;
+            width: 60px;
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+        }
+
+        .resizing {
+            user-select: none;
+        }
+
+        .resizing * {
+            cursor: inherit !important;
+        }
+
+        /* ER Diagram */
+        #er-view {
+            cursor: grab;
+            overflow: hidden;
+            background-color: #f8fafc;
+        }
+
+        .dark #er-view {
+            background-color: #0f1117;
+        }
+
+        #er-view:active {
+            cursor: grabbing;
+        }
+
+        .er-node {
+            position: absolute;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            transition: box-shadow 0.1s;
+        }
+
+        .er-node.dragging {
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            z-index: 50;
+            transform: scale(1.02);
+        }
+
+        /* Drag and Drop for Tree Items */
+        .draggable-item {
+            transition: all 0.2s ease;
+        }
+
+        .draggable-item.dragging {
+            opacity: 0.5;
+            background: #e0e7ff;
+            border: 2px dashed #6366f1;
+        }
+
+        .dark .draggable-item.dragging {
+            background: #312e81;
+        }
+
+        .draggable-item.drag-over {
+            border-top: 2px solid #6366f1;
+            margin-top: 4px;
+        }
+
+        .draggable-item.drag-over-bottom {
+            border-bottom: 2px solid #6366f1;
+            margin-bottom: 4px;
+        }
+
+        .drag-handle {
+            font-size: 10px;
+            line-height: 1;
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans h-screen flex flex-col overflow-hidden transition-colors duration-200">
+
+    <!-- Header -->
+    <header
+        class="h-14 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div
+                class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/20">
+                JS
+            </div>
+            <h1 class="font-semibold text-lg tracking-tight">JSON <span class="text-indigo-500">Architect</span></h1>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                id="cmd-palette-trigger">
+                <span class="font-mono">⌘K</span>
+                <span>Command Palette</span>
+            </div>
+
+            <div class="h-6 w-px bg-gray-200 dark:bg-gray-800"></div>
+
+            <button id="theme-toggle"
+                class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors">
+                <!-- Sun -->
+                <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                    </path>
+                </svg>
+                <!-- Moon -->
+                <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20.354 24.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- Sidebar (Object Nav) -->
+        <aside id="sidebar"
+            class="w-64 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col transition-all duration-300 -ml-64 md:ml-0">
+            <div
+                class="p-3 border-b border-gray-200 dark:border-gray-800 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Structure
+            </div>
+            <div id="object-nav" class="flex-1 overflow-y-auto p-2 space-y-1 text-sm font-mono">
+                <!-- Nav Items Injected Here -->
+                <div class="text-gray-400 text-center mt-4 text-xs italic">No JSON loaded</div>
+            </div>
+        </aside>
+
+        <!-- Sidebar Resizer -->
+        <div id="sidebar-resizer" class="resizer resizer-horizontal bg-gray-200 dark:bg-gray-800 z-10"></div>
+
+        <!-- Tabs & Workspace -->
+        <div class="flex-1 flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900">
+
+            <!-- Mode Tabs -->
+            <div class="flex items-center border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 px-4">
+                <button
+                    class="tab-btn active px-4 py-3 text-sm font-medium border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400"
+                    data-tab="analyze">Analyze</button>
+                <button
+                    class="tab-btn px-4 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    data-tab="diff">Diff</button>
+            </div>
+
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <!-- Status Bar -->
+                <div id="status-bar"
+                    class="h-6 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center px-2 text-xs gap-4">
+                    <div id="linter-status" class="flex items-center gap-2"></div>
+                    <div class="ml-auto flex items-center gap-2">
+                        <button id="btn-toggle-warnings"
+                            class="text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1"
+                            title="Toggle Warnings">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            <span id="warnings-label">Warnings: Off</span>
+                        </button>
+                        <button id="btn-shortcuts-help"
+                            class="text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                            title="Keyboard Shortcuts (?)">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analyze View -->
+                <div id="view-analyze" class="flex-1 flex overflow-hidden">
+
+                    <!-- Input Panel -->
+                    <div class="flex-1 flex flex-col min-w-[300px] relative group">
+                        <div
+                            class="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+                            <span class="text-xs font-semibold text-gray-500 uppercase">Input</span>
+                            <div class="flex gap-2">
+                                <button id="btn-paste"
+                                    class="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Paste</button>
+                                <button id="btn-format"
+                                    class="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Format</button>
+                                <button id="btn-minify"
+                                    class="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Minify</button>
+
+                                <!-- Export Dropdown -->
+                                <div class="relative" id="export-dropdown-container">
+                                    <button id="btn-export"
+                                        class="text-xs px-2 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        Export
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                                clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <div id="export-dropdown"
+                                        class="hidden absolute left-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-10">
+                                        <div class="py-1">
+                                            <button
+                                                class="export-option w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                                data-format="json">
+                                                <span class="font-mono text-indigo-600 dark:text-indigo-400">JSON</span>
+                                                <span class="text-gray-500">Download JSON</span>
+                                            </button>
+                                            <button
+                                                class="export-option w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                                data-format="xml">
+                                                <span class="font-mono text-orange-600 dark:text-orange-400">XML</span>
+                                                <span class="text-gray-500">Convert to XML</span>
+                                            </button>
+                                            <button
+                                                class="export-option w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                                data-format="csv">
+                                                <span class="font-mono text-green-600 dark:text-green-400">CSV</span>
+                                                <span class="text-gray-500">Convert to CSV</span>
+                                            </button>
+                                            <button
+                                                class="export-option w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                                data-format="yaml">
+                                                <span class="font-mono text-purple-600 dark:text-purple-400">YAML</span>
+                                                <span class="text-gray-500">Convert to YAML</span>
+                                            </button>
+                                            <button
+                                                class="export-option w-full text-left px-4 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                                                data-format="ts">
+                                                <span class="font-mono text-blue-600 dark:text-blue-400">TS</span>
+                                                <span class="text-gray-500">TypeScript Interface</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="relative flex-1">
+                            <textarea id="json-input"
+                                class="absolute inset-0 w-full h-full p-4 bg-white dark:bg-gray-950 font-mono text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500/50 border-none"
+                                placeholder="Paste JSON here..." spellcheck="false"></textarea>
+                            <!-- Linter Overlay (Simplified implementation via absolute positioning markers could go here, but we'll use a separate panel for simplicity) -->
+                        </div>
+                        <!-- Linter Status Bar -->
+                        <div id="linter-status-old"
+                            class="h-8 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 flex items-center px-4 text-xs gap-4">
+                            <span class="text-green-500 flex items-center gap-1"><span
+                                    class="w-2 h-2 rounded-full bg-green-500"></span> Valid</span>
+                        </div>
+                    </div>
+
+                    <!-- Resizer -->
+                    <div id="input-output-resizer" class="resizer resizer-horizontal bg-gray-200 dark:bg-gray-800 z-10">
+                    </div>
+
+                    <!-- Output/Tree Panel -->
+                    <div
+                        class="flex-1 flex flex-col min-w-[300px] bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800">
+                        <div
+                            class="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+                            <div class="flex gap-2">
+                                <button id="btn-expand"
+                                    class="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Expand
+                                    All</button>
+                                <button id="btn-collapse"
+                                    class="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700">Collapse
+                                    All</button>
+                            </div>
+                            <div class="flex gap-2 items-center">
+                                <div class="relative">
+                                    <input type="text" id="tree-search"
+                                        class="pl-6 pr-2 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded bg-white dark:bg-gray-800 focus:outline-none focus:border-indigo-500 w-32 focus:w-48 transition-all"
+                                        placeholder="Search (Ctrl+F)...">
+                                    <svg class="w-3 h-3 text-gray-400 absolute left-1.5 top-1.5" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                                <button id="btn-copy"
+                                    class="text-xs px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-900/50">Copy
+                                    JSON</button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-auto p-4 relative" id="tree-container">
+                            <div class="text-gray-400 text-center mt-10 text-sm">Parsed JSON will appear here</div>
+                        </div>
+
+                        <!-- Tree/Bottom Panel Resizer -->
+                        <div id="tree-bottom-resizer"
+                            class="resizer resizer-vertical bg-gray-200 dark:bg-gray-800 z-10"></div>
+
+                        <!-- Bottom Panels (Schema / ER) -->
+                        <div id="bottom-panel"
+                            class="h-1/3 border-t border-gray-200 dark:border-gray-800 flex flex-col">
+                            <div class="flex border-b border-gray-200 dark:border-gray-800">
+                                <button id="btn-view-schema"
+                                    class="px-3 py-1 text-xs font-medium border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400">Schema
+                                    & Stats</button>
+                                <button id="btn-view-er"
+                                    class="px-3 py-1 text-xs font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400">ER
+                                    Visualization</button>
+                                <button id="btn-fullscreen-bottom"
+                                    class="ml-auto p-1 text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                                    title="Fullscreen (F11)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="flex-1 overflow-auto p-4 bg-gray-50 dark:bg-gray-900/50"
+                                id="bottom-panel-content">
+                                <!-- Schema Content -->
+                                <div id="schema-view" class="text-xs font-mono space-y-2"></div>
+                                <!-- ER Content (Hidden by default) -->
+                                <div id="er-view"
+                                    class="hidden w-full h-full relative min-h-[300px] bg-gray-50 dark:bg-gray-900">
+                                    <div class="absolute bottom-4 right-4 flex gap-2 z-20">
+                                        <button id="er-zoom-in"
+                                            class="p-2 bg-white dark:bg-gray-800 rounded shadow hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                                            title="Zoom In">+</button>
+                                        <button id="er-zoom-out"
+                                            class="p-2 bg-white dark:bg-gray-800 rounded shadow hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300"
+                                            title="Zoom Out">-</button>
+                                        <button id="er-reset"
+                                            class="p-2 bg-white dark:bg-gray-800 rounded shadow hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold"
+                                            title="Reset View">R</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diff View (Hidden) -->
+                <div id="view-diff" class="hidden flex-1 overflow-hidden flex-col">
+                    <div class="flex-1 flex">
+                        <div class="flex-1 flex flex-col border-r border-gray-200 dark:border-gray-800">
+                            <div
+                                class="p-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-center">
+                                Original</div>
+                            <textarea id="diff-input-left"
+                                class="flex-1 p-4 bg-white dark:bg-gray-950 font-mono text-sm resize-none focus:outline-none border-none"
+                                placeholder="Original JSON"></textarea>
+                        </div>
+                        <div class="flex-1 flex flex-col">
+                            <div
+                                class="p-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-center">
+                                Modified</div>
+                            <textarea id="diff-input-right"
+                                class="flex-1 p-4 bg-white dark:bg-gray-950 font-mono text-sm resize-none focus:outline-none border-none"
+                                placeholder="Modified JSON"></textarea>
+                        </div>
+                    </div>
+                    <div
+                        class="h-1/3 border-t border-gray-200 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-950">
+                        <div
+                            class="bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-2 py-1 flex items-center justify-between">
+                            <span class="text-xs font-semibold">JSON Tree</span>
+                            <button id="btn-fullscreen-tree"
+                                class="text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400"
+                                title="Fullscreen (F11)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div
+                            class="p-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
+                            <span class="text-xs font-semibold">Diff Results</span>
+                            <button id="btn-run-diff"
+                                class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded">Compare</button>
+                        </div>
+                        <div id="diff-output" class="flex-1 overflow-auto p-4 font-mono text-sm"></div>
+                    </div>
+                </div>
+
+            </div>
+    </main>
+
+    <!-- Command Palette Modal -->
+    <div id="cmd-palette"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-start justify-center pt-[20vh]">
+        <div
+            class="bg-white dark:bg-gray-900 w-full max-w-lg rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden flex flex-col max-h-[60vh] animate-slide-in">
+            <div class="p-3 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" id="cmd-input" class="flex-1 bg-transparent border-none focus:ring-0 text-sm"
+                    placeholder="Type a command...">
+                <span
+                    class="text-xs text-gray-400 border border-gray-200 dark:border-gray-700 px-1.5 py-0.5 rounded">ESC</span>
+            </div>
+            <div id="cmd-list" class="overflow-y-auto p-2 space-y-1">
+                <!-- Commands injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Keyboard Shortcuts Help Modal -->
+    <div id="shortcuts-modal"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div
+            class="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden max-h-[80vh] flex flex-col">
+            <div
+                class="p-4 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-indigo-600">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    Keyboard Shortcuts
+                </h3>
+                <button id="close-shortcuts-modal" class="text-white hover:text-gray-200">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">📝 Editing</h4>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between"><span>Format JSON</span><kbd class="kbd">Ctrl+S</kbd>
+                            </div>
+                            <div class="flex justify-between"><span>Minify JSON</span><kbd
+                                    class="kbd">Ctrl+Shift+M</kbd></div>
+                            <div class="flex justify-between"><span>Copy JSON</span><kbd class="kbd">Ctrl+C</kbd></div>
+                            <div class="flex justify-between"><span>Paste JSON</span><kbd class="kbd">Ctrl+V</kbd></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">🔍 Search & Navigation
+                        </h4>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between"><span>Search in Tree</span><kbd class="kbd">Ctrl+F</kbd>
+                            </div>
+                            <div class="flex justify-between"><span>Next Result</span><kbd class="kbd">F3 / Ctrl+G</kbd>
+                            </div>
+                            <div class="flex justify-between"><span>Previous Result</span><kbd
+                                    class="kbd">Shift+F3</kbd></div>
+                            <div class="flex justify-between"><span>Command Palette</span><kbd class="kbd">Ctrl+K</kbd>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">📂 Tree View</h4>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between"><span>Expand All</span><kbd class="kbd">Ctrl+E</kbd></div>
+                            <div class="flex justify-between"><span>Collapse All</span><kbd
+                                    class="kbd">Ctrl+Shift+E</kbd></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">🖥️ Views</h4>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between"><span>Analyze View</span><kbd class="kbd">Ctrl+1</kbd>
+                            </div>
+                            <div class="flex justify-between"><span>Diff View</span><kbd class="kbd">Ctrl+D</kbd></div>
+                            <div class="flex justify-between"><span>Fullscreen</span><kbd class="kbd">F11</kbd></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">🎨 Appearance</h4>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between"><span>Toggle Theme</span><kbd class="kbd">Ctrl+T</kbd>
+                            </div>
+                            <div class="flex justify-between"><span>Zoom In</span><kbd class="kbd">Ctrl+=</kbd></div>
+                            <div class="flex justify-between"><span>Zoom Out</span><kbd class="kbd">Ctrl+-</kbd></div>
+                            <div class="flex justify-between"><span>Reset Zoom</span><kbd class="kbd">Ctrl+0</kbd></div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm mb-2 text-indigo-600 dark:text-indigo-400">❓ Help</h4>
+                        <div class="space-y-1 text-xs">
+                            <div class="flex justify-between"><span>Show Shortcuts</span><kbd class="kbd">?</kbd></div>
+                            <div class="flex justify-between"><span>Close Modal</span><kbd class="kbd">Esc</kbd></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .kbd {
+            @apply px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-300 font-mono text-[10px] border border-gray-300 dark:border-gray-600;
+        }
+    </style>
+
+    <script type="module">
+        // --- UTILS ---
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+        const escapeHtml = (str) => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+
+        // --- STATE ---
+        const state = {
+            json: null,
+            raw: '',
+            theme: localStorage.getItem('theme') || 'dark',
+            mode: 'analyze',
+            expanded: new Set(), // Stores paths of expanded nodes
+            zoom: {
+                input: 1,
+                tree: 1,
+                schema: 1
+            },
+            searchResults: [],
+            currentSearchIndex: -1,
+            showWarnings: false,
+            fullscreenElement: null,
+            isErFullscreen: false
+        };
+
+        // --- THEME ---
+        function toggleTheme(force) {
+            const isDark = force === 'dark' || (force === undefined && !document.documentElement.classList.contains('dark'));
+            document.documentElement.classList.toggle('dark', isDark);
+            state.theme = isDark ? 'dark' : 'light';
+            localStorage.setItem('theme', state.theme);
+        }
+        if (state.theme === 'light') toggleTheme('light');
+
+        // --- LINTER ---
+        class Linter {
+            static lint(text) {
+                const errors = [];
+                const warnings = [];
+
+                // 1. Duplicate Keys Check (Regex based)
+                const keyRegex = /"([^"]+)"\s*:/g;
+                const keyCounts = {};
+                let match;
+                while ((match = keyRegex.exec(text)) !== null) {
+                    const key = match[1];
+                    keyCounts[key] = (keyCounts[key] || 0) + 1;
+                }
+                Object.entries(keyCounts).forEach(([key, count]) => {
+                    if (count > 1) warnings.push(`Duplicate key found: "${key}" (${count} times)`);
+                });
+
+                // 2. Suspicious Values
+                if (/"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(text)) warnings.push("Timestamp strings detected");
+                if (/"(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?"/.test(text) && text.length > 1000) warnings.push("Potential Base64 strings detected");
+
+                return { errors, warnings };
+            }
+        }
+
+        // --- PARSER ---
+        class JsonParser {
+            static parse(text) {
+                try {
+                    return { data: JSON.parse(text), error: null };
+                } catch (e) {
+                    return { data: null, error: e.message };
+                }
+            }
+
+            static tryFix(text) {
+                let fixed = text;
+                // 1. Remove trailing commas
+                fixed = fixed.replace(/,\s*([\]}])/g, '$1');
+                // 2. Fix unquoted keys (simple alphanumeric)
+                fixed = fixed.replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+                // 3. Replace single quotes with double quotes (naive)
+                if (!text.includes('"') && text.includes("'")) {
+                    fixed = fixed.replace(/'/g, '"');
+                }
+
+                try {
+                    JSON.parse(fixed);
+                    return fixed;
+                } catch (e) {
+                    return null;
+                }
+            }
+        }
+
+        // --- RENDERER ---
+        class TreeRenderer {
+            static render(data, path = '$', level = 0) {
+                if (data === null) return this.renderPrimitive(data, 'null', path);
+                if (typeof data === 'boolean') return this.renderPrimitive(data, 'boolean', path);
+                if (typeof data === 'number') return this.renderPrimitive(data, 'number', path);
+                if (typeof data === 'string') return this.renderPrimitive(data, 'string', path);
+
+                const isArray = Array.isArray(data);
+                const isEmpty = isArray ? data.length === 0 : Object.keys(data).length === 0;
+                const type = isArray ? 'array' : 'object';
+                const bracketOpen = isArray ? '[' : '{';
+                const bracketClose = isArray ? ']' : '}';
+                const keys = isArray ? data : Object.keys(data);
+                const count = isArray ? data.length : keys.length;
+
+                // ID for toggling
+                const id = 'node-' + Math.random().toString(36).substr(2, 9);
+                const isExpanded = level < 2; // Default expand depth
+
+                let contentHtml = '';
+                if (!isEmpty) {
+                    contentHtml = `<div id="${id}-content" class="${isExpanded ? '' : 'hidden'} pl-4 relative border-l border-gray-200 dark:border-gray-800 ml-1">`;
+
+                    if (isArray) {
+                        data.forEach((item, idx) => {
+                            const itemPath = `${path}[${idx}]`;
+                            contentHtml += `<div class="my-0.5 hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 draggable-item group/item relative" draggable="true" data-path="${itemPath}" data-index="${idx}" data-parent="${path}">
+                                <span class="drag-handle opacity-0 group-hover/item:opacity-100 absolute -left-4 top-1 cursor-move text-gray-400 hover:text-indigo-500" title="Drag to reorder">⋮⋮</span>
+                                <span class="select-none opacity-50 text-xs mr-2 w-4 inline-block text-right">${idx}</span>
+                                ${this.render(item, itemPath, level + 1)}
+                            </div>`;
+                        });
+                    } else {
+                        Object.entries(data).forEach(([key, val], idx) => {
+                            const keyPath = `${path}['${key}']`;
+                            contentHtml += `<div class="my-0.5 hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded px-1 flex items-start draggable-item group/item relative" draggable="true" data-path="${keyPath}" data-key="${escapeHtml(key)}" data-parent="${path}">
+                                <span class="drag-handle opacity-0 group-hover/item:opacity-100 absolute -left-4 top-1 cursor-move text-gray-400 hover:text-indigo-500" title="Drag to reorder">⋮⋮</span>
+                                <span class="syntax-key mr-1">"${escapeHtml(key)}":</span>
+                                ${this.render(val, keyPath, level + 1)}
+                            </div>`;
+                        });
+                    }
+                    contentHtml += `</div>`;
+                }
+
+                const toggleBtn = !isEmpty
+                    ? `<button onclick="document.getElementById('${id}-content').classList.toggle('hidden'); this.classList.toggle('-rotate-90')" class="w-4 h-4 inline-flex items-center justify-center transition-transform ${isExpanded ? '' : '-rotate-90'} text-gray-400 hover:text-gray-200">▼</button>`
+                    : `<span class="w-4 inline-block"></span>`;
+
+                const meta = !isEmpty ? `<span class="text-gray-500 text-xs ml-2 italic">// ${count} items</span>` : '';
+
+                return `
+                    <div class="inline-block align-top">
+                        <div class="flex items-center group cursor-pointer" data-path="${path}">
+                            ${toggleBtn}
+                            <span class="text-gray-500 font-bold mx-1">${bracketOpen}</span>
+                            ${isEmpty ? '' : meta}
+                            ${isEmpty ? `<span class="text-gray-500 font-bold">${bracketClose}</span>` : ''}
+                        </div>
+                        ${contentHtml}
+                        ${!isEmpty ? `<div class="${isExpanded ? '' : 'hidden'}" id="${id}-close"><span class="ml-5 text-gray-500 font-bold">${bracketClose}</span></div>` : ''}
+                    </div>
+                `;
+            }
+
+            static renderPrimitive(val, type, path) {
+                let display = val;
+                let classes = `syntax-${type}`;
+
+                if (type === 'string') {
+                    display = `"${escapeHtml(val)}"`;
+                    // Value Renderers
+                    if (val.startsWith('http')) {
+                        display = `"<a href="${val}" target="_blank" class="underline decoration-dotted hover:text-indigo-400">${escapeHtml(val)}</a>"`;
+                    }
+                    // Date detection
+                    if (/\d{4}-\d{2}-\d{2}T/.test(val)) {
+                        const d = new Date(val);
+                        if (!isNaN(d.getTime())) {
+                            display += ` <span class="text-xs text-gray-500 ml-2 bg-gray-200 dark:bg-gray-800 px-1 rounded">${d.toLocaleString()}</span>`;
+                        }
+                    }
+                } else if (type === 'null') {
+                    display = 'null';
+                    classes += ' italic bg-gray-200 dark:bg-gray-800 px-1 rounded text-xs font-bold';
+                } else if (type === 'boolean') {
+                    classes += ' font-bold';
+                }
+
+                return `<span class="${classes} cursor-pointer hover:underline" onclick="window.dispatchEvent(new CustomEvent('show-path', {detail: '${path}'}))">${display}</span>`;
+            }
+        }
+
+        // --- SCHEMA ENGINE ---
+        class SchemaEngine {
+            static infer(data) {
+                const getType = (val, key) => {
+                    if (val === null) return 'null';
+                    if (typeof val !== 'object') return typeof val;
+                    if (Array.isArray(val)) {
+                        if (val.length === 0) return 'any[]';
+                        const itemType = getType(val[0], key);
+                        return `${itemType}[]`;
+                    }
+
+                    const props = Object.entries(val).map(([k, v]) => {
+                        return `  ${k}: ${getType(v, k)};`;
+                    });
+                    return `{\n${props.join('\n')}\n}`;
+                };
+
+                if (Array.isArray(data)) {
+                    const itemType = getType(data[0], 'RootItem');
+                    return `type Root = ${itemType}[];`;
+                }
+
+                const props = Object.entries(data).map(([k, v]) => {
+                    return `  ${k}: ${getType(v, k)};`;
+                });
+                return `interface Root {\n${props.join('\n')}\n}`;
+            }
+
+            static getStats(data) {
+                let nodes = 0;
+                let depth = 0;
+                const traverse = (obj, d) => {
+                    nodes++;
+                    depth = Math.max(depth, d);
+                    if (obj && typeof obj === 'object') {
+                        Object.values(obj).forEach(v => traverse(v, d + 1));
+                    }
+                };
+                traverse(data, 0);
+                return { nodes, depth, size: JSON.stringify(data).length };
+            }
+        }
+
+        // --- DIFF ENGINE ---
+        class DiffEngine {
+            static compute(obj1, obj2) {
+                // Simple structural diff
+                const output = [];
+
+                const compare = (o1, o2, path) => {
+                    const allKeys = new Set([...Object.keys(o1 || {}), ...Object.keys(o2 || {})]);
+
+                    allKeys.forEach(key => {
+                        const val1 = o1 ? o1[key] : undefined;
+                        const val2 = o2 ? o2[key] : undefined;
+                        const currentPath = path ? `${path}.${key}` : key;
+
+                        if (val1 === undefined) {
+                            output.push({ type: 'added', path: currentPath, val: val2 });
+                        } else if (val2 === undefined) {
+                            output.push({ type: 'removed', path: currentPath, val: val1 });
+                        } else if (JSON.stringify(val1) !== JSON.stringify(val2)) {
+                            if (typeof val1 === 'object' && typeof val2 === 'object' && val1 !== null && val2 !== null) {
+                                compare(val1, val2, currentPath);
+                            } else {
+                                output.push({ type: 'modified', path: currentPath, old: val1, new: val2 });
+                            }
+                        }
+                    });
+                };
+
+                compare(obj1, obj2, '');
+                return output;
+            }
+        }
+
+        // --- CONVERTER ENGINE ---
+        class ConverterEngine {
+            static toXML(obj, rootName = 'root') {
+                const escape = (str) => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+                const convert = (data, nodeName) => {
+                    if (data === null) return `<${nodeName} />`;
+                    if (typeof data !== 'object') return `<${nodeName}>${escape(data)}</${nodeName}>`;
+
+                    if (Array.isArray(data)) {
+                        return data.map((item, i) => convert(item, 'item')).join('\\n');
+                    }
+
+                    let xml = `<${nodeName}>`;
+                    Object.entries(data).forEach(([key, val]) => {
+                        const safeKey = key.replace(/[^a-zA-Z0-9_-]/g, '_');
+                        xml += '\\n  ' + convert(val, safeKey).split('\\n').join('\\n  ');
+                    });
+                    xml += `\\n</${nodeName}>`;
+                    return xml;
+                };
+
+                return `<?xml version="1.0" encoding="UTF-8"?>\\n${convert(obj, rootName)}`;
+            }
+
+            static toCSV(data) {
+                if (!Array.isArray(data)) {
+                    return 'Error: CSV conversion requires an array of objects';
+                }
+                if (data.length === 0) return '';
+
+                const flatten = (obj, prefix = '') => {
+                    let result = {};
+                    Object.entries(obj).forEach(([key, val]) => {
+                        const newKey = prefix ? `${prefix}.${key}` : key;
+                        if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+                            Object.assign(result, flatten(val, newKey));
+                        } else {
+                            result[newKey] = val;
+                        }
+                    });
+                    return result;
+                };
+
+                const flatData = data.map(item => flatten(item));
+                const headers = [...new Set(flatData.flatMap(Object.keys))];
+
+                const escape = (val) => {
+                    if (val === null || val === undefined) return '';
+                    const str = String(val);
+                    if (str.includes(',') || str.includes('"') || str.includes('\\n')) {
+                        return `"${str.replace(/"/g, '""')}"`;
+                    }
+                    return str;
+                };
+
+                let csv = headers.map(escape).join(',') + '\\n';
+                flatData.forEach(row => {
+                    csv += headers.map(h => escape(row[h])).join(',') + '\\n';
+                });
+
+                return csv;
+            }
+
+            static toYAML(obj, indent = 0) {
+                const spaces = '  '.repeat(indent);
+
+                if (obj === null) return 'null';
+                if (typeof obj === 'string') {
+                    if (obj.includes('\\n') || obj.includes(':') || obj.includes('#')) {
+                        return `|\\n${obj.split('\\n').map(line => '  '.repeat(indent + 1) + line).join('\\n')}`;
+                    }
+                    return obj.includes(' ') ? `"${obj}"` : obj;
+                }
+                if (typeof obj !== 'object') return String(obj);
+
+                if (Array.isArray(obj)) {
+                    if (obj.length === 0) return '[]';
+                    return '\\n' + obj.map(item => {
+                        const val = this.toYAML(item, indent + 1);
+                        return spaces + '  - ' + (val.startsWith('\\n') ? val.substring(1) : val);
+                    }).join('\\n');
+                }
+
+                const entries = Object.entries(obj);
+                if (entries.length === 0) return '{}';
+
+                return '\\n' + entries.map(([key, val]) => {
+                    const yamlVal = this.toYAML(val, indent + 1);
+                    return spaces + '  ' + key + ': ' + (yamlVal.startsWith('\\n') ? yamlVal : yamlVal);
+                }).join('\\n');
+            }
+
+            static toTypeScript(obj, interfaceName = 'Root') {
+                return SchemaEngine.infer(obj).replace(/interface \\w+/g, `interface ${interfaceName}`);
+            }
+        }
+
+        // --- VISUALIZER ---
+        class ErVisualizer {
+            constructor(container) {
+                this.container = container;
+                this.canvas = document.createElement('div');
+                this.canvas.style.transformOrigin = '0 0';
+                this.canvas.style.width = '100%';
+                this.canvas.style.height = '100%';
+                this.container.appendChild(this.canvas);
+
+                this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                this.svg.style.position = 'absolute';
+                this.svg.style.top = '0';
+                this.svg.style.left = '0';
+                this.svg.style.width = '100%';
+                this.svg.style.height = '100%';
+                this.svg.style.overflow = 'visible';
+                this.svg.style.pointerEvents = 'none';
+                this.svg.innerHTML = `<defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1" opacity="0.5" />
+                    </marker>
+                </defs>`;
+                this.canvas.appendChild(this.svg);
+
+                this.edgesLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                this.svg.appendChild(this.edgesLayer);
+
+                this.nodesLayer = document.createElement('div');
+                this.canvas.appendChild(this.nodesLayer);
+
+                this.state = {
+                    nodes: [],
+                    edges: [],
+                    scale: 1,
+                    pan: { x: 0, y: 0 },
+                    isDragging: false,
+                    dragNode: null,
+                    dragStart: { x: 0, y: 0 },
+                    panStart: { x: 0, y: 0 }
+                };
+
+                this.setupEvents();
+            }
+
+            setupEvents() {
+                // Pan
+                this.container.addEventListener('mousedown', e => {
+                    if (e.target.closest('.er-node')) return;
+                    this.state.isPanning = true;
+                    this.state.panStart = { x: e.clientX - this.state.pan.x, y: e.clientY - this.state.pan.y };
+                    this.container.style.cursor = 'grabbing';
+                });
+
+                window.addEventListener('mousemove', e => {
+                    if (this.state.isPanning) {
+                        this.state.pan.x = e.clientX - this.state.panStart.x;
+                        this.state.pan.y = e.clientY - this.state.panStart.y;
+                        this.updateTransform();
+                    } else if (this.state.isDragging && this.state.dragNode) {
+                        const dx = (e.clientX - this.state.dragStart.x) / this.state.scale;
+                        const dy = (e.clientY - this.state.dragStart.y) / this.state.scale;
+
+                        this.state.dragNode.x = this.state.dragNode.initialX + dx;
+                        this.state.dragNode.y = this.state.dragNode.initialY + dy;
+
+                        this.updateNodePosition(this.state.dragNode);
+                        this.drawEdges();
+                    }
+                });
+
+                window.addEventListener('mouseup', () => {
+                    this.state.isPanning = false;
+                    this.state.isDragging = false;
+                    this.state.dragNode = null;
+                    this.container.style.cursor = 'grab';
+                    $$('.er-node').forEach(n => n.classList.remove('dragging'));
+                });
+
+                // Zoom
+                this.container.addEventListener('wheel', e => {
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        const delta = -Math.sign(e.deltaY) * 0.1;
+                        this.zoom(delta);
+                    }
+                });
+
+                // Controls
+                $('#er-zoom-in').onclick = (e) => { e.stopPropagation(); this.zoom(0.2); };
+                $('#er-zoom-out').onclick = (e) => { e.stopPropagation(); this.zoom(-0.2); };
+                $('#er-reset').onclick = (e) => { e.stopPropagation(); this.reset(); };
+            }
+
+            zoom(delta) {
+                const newScale = Math.min(Math.max(0.2, this.state.scale + delta), 3);
+                this.state.scale = newScale;
+                this.updateTransform();
+            }
+
+            reset() {
+                this.state.scale = 1;
+                this.state.pan = { x: 20, y: 20 };
+                this.updateTransform();
+            }
+
+            updateTransform() {
+                this.canvas.style.transform = `translate(${this.state.pan.x}px, ${this.state.pan.y}px) scale(${this.state.scale})`;
+            }
+
+            updateNodePosition(node) {
+                const el = document.getElementById(`node-${node.id}`);
+                if (el) {
+                    el.style.left = `${node.x}px`;
+                    el.style.top = `${node.y}px`;
+                }
+            }
+
+            drawEdges() {
+                this.edgesLayer.innerHTML = '';
+                this.state.edges.forEach(edge => {
+                    const n1 = this.state.nodes[edge.from];
+                    const n2 = this.state.nodes[edge.to];
+
+                    const startX = n1.x + 180;
+                    const startY = n1.y + 15;
+                    const endX = n2.x;
+                    const endY = n2.y + 15;
+
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    const cp1x = startX + (endX - startX) / 2;
+                    const cp2x = startX + (endX - startX) / 2;
+
+                    const d = `M ${startX} ${startY} C ${cp1x} ${startY}, ${cp2x} ${endY}, ${endX} ${endY}`;
+
+                    path.setAttribute('d', d);
+                    path.setAttribute('stroke', '#6366f1');
+                    path.setAttribute('stroke-width', '2');
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('opacity', '0.5');
+                    path.setAttribute('marker-end', 'url(#arrowhead)');
+                    this.edgesLayer.appendChild(path);
+                });
+            }
+
+            setData(data) {
+                this.nodesLayer.innerHTML = '';
+                this.state.nodes = [];
+                this.state.edges = [];
+
+                const nodes = [];
+                const edges = [];
+
+                const traverse = (obj, name, parentId) => {
+                    if (!obj || typeof obj !== 'object') return;
+                    if (Array.isArray(obj)) {
+                        if (obj.length > 0 && typeof obj[0] === 'object') traverse(obj[0], name + '[]', parentId);
+                        return;
+                    }
+
+                    const id = nodes.length;
+                    const fields = [];
+                    const childObjects = [];
+
+                    Object.entries(obj).forEach(([k, v]) => {
+                        if (v === null || typeof v !== 'object') {
+                            fields.push({ k, t: v === null ? 'null' : typeof v });
+                        } else if (Array.isArray(v)) {
+                            if (v.length > 0 && typeof v[0] === 'object') {
+                                childObjects.push({ k, v: v[0] });
+                            } else {
+                                fields.push({ k, t: 'Array' });
+                            }
+                        } else {
+                            childObjects.push({ k, v });
+                        }
+                    });
+
+                    nodes.push({ id, name, fields, x: 0, y: 0 });
+                    if (parentId !== null) edges.push({ from: parentId, to: id });
+                    childObjects.forEach(c => traverse(c.v, c.k, id));
+                };
+
+                traverse(data, 'Root', null);
+
+                const levels = {};
+                const getLevel = (id, depth) => {
+                    if (!levels[depth]) levels[depth] = [];
+                    levels[depth].push(id);
+                    edges.filter(e => e.from === id).forEach(e => getLevel(e.to, depth + 1));
+                };
+                if (nodes.length > 0) getLevel(0, 0);
+
+                const nodeWidth = 180;
+                Object.keys(levels).forEach(depth => {
+                    let currentY = 50;
+                    levels[depth].forEach(nodeId => {
+                        nodes[nodeId].x = 50 + depth * (nodeWidth + 120);
+                        nodes[nodeId].y = currentY;
+                        currentY += 60 + (Math.min(nodes[nodeId].fields.length, 10) * 24);
+                    });
+                });
+
+                this.state.nodes = nodes;
+                this.state.edges = edges;
+
+                nodes.forEach(node => {
+                    const el = document.createElement('div');
+                    el.id = `node-${node.id}`;
+                    el.className = 'er-node absolute bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg flex flex-col z-10 text-xs w-[180px]';
+                    el.style.left = `${node.x}px`;
+                    el.style.top = `${node.y}px`;
+
+                    let fieldsHtml = node.fields.slice(0, 10).map(f =>
+                        `<div class="flex justify-between px-2 py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                            <span class="font-medium truncate mr-2 text-gray-700 dark:text-gray-300" title="${escapeHtml(f.k)}">${escapeHtml(f.k)}</span>
+                            <span class="text-gray-400 text-[10px]">${f.t}</span>
+                        </div>`
+                    ).join('');
+                    if (node.fields.length > 10) fieldsHtml += `<div class="px-2 py-1 text-gray-400 italic text-[10px]">+ ${node.fields.length - 10} more</div>`;
+
+                    el.innerHTML = `
+                        <div class="er-header bg-indigo-600 text-white px-2 py-1.5 font-bold rounded-t truncate text-xs flex items-center cursor-grab active:cursor-grabbing">
+                            <span class="truncate flex-1">${escapeHtml(node.name)}</span>
+                            <svg class="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-900/50">${fieldsHtml || '<div class="p-2 italic text-gray-400">No primitives</div>'}</div>
+                    `;
+
+                    const header = el.querySelector('.er-header');
+                    header.addEventListener('mousedown', e => {
+                        e.stopPropagation();
+                        this.state.isDragging = true;
+                        this.state.dragNode = node;
+                        this.state.dragStart = { x: e.clientX, y: e.clientY };
+                        node.initialX = node.x;
+                        node.initialY = node.y;
+                        el.classList.add('dragging');
+                    });
+
+                    this.nodesLayer.appendChild(el);
+                });
+
+                this.drawEdges();
+                this.state.pan = { x: 20, y: 20 };
+                this.state.scale = 1;
+                this.updateTransform();
+            }
+        }
+
+        // --- APP CONTROLLER ---
+        class App {
+            constructor() {
+                this.erVisualizer = new ErVisualizer($('#er-view'));
+                this.initResizers();
+                this.initDragAndDrop();
+                this.initEventListeners();
+                this.initCommandPalette();
+                this.initKeyboardShortcuts();
+                this.applyZoom();
+            }
+
+            initResizers() {
+                // Sidebar resizer
+                const sidebarResizer = $('#sidebar-resizer');
+                const sidebar = $('#sidebar');
+                let isResizingSidebar = false;
+                let startX = 0;
+                let startWidth = 0;
+
+                sidebarResizer.addEventListener('mousedown', (e) => {
+                    isResizingSidebar = true;
+                    startX = e.clientX;
+                    startWidth = sidebar.offsetWidth;
+                    sidebarResizer.classList.add('active');
+                    document.body.classList.add('resizing');
+                    e.preventDefault();
+                });
+
+                // Input/Output resizer
+                const inputOutputResizer = $('#input-output-resizer');
+                const inputPanel = inputOutputResizer.previousElementSibling;
+                let isResizingInputOutput = false;
+
+                inputOutputResizer.addEventListener('mousedown', (e) => {
+                    isResizingInputOutput = true;
+                    startX = e.clientX;
+                    startWidth = inputPanel.offsetWidth;
+                    inputOutputResizer.classList.add('active');
+                    document.body.classList.add('resizing');
+                    e.preventDefault();
+                });
+
+                // Tree/Bottom panel resizer
+                const treeBottomResizer = $('#tree-bottom-resizer');
+                const treeContainer = $('#tree-container');
+                const bottomPanel = $('#bottom-panel');
+                let isResizingTreeBottom = false;
+                let startY = 0;
+                let startTreeHeight = 0;
+                let startBottomHeight = 0;
+
+                treeBottomResizer.addEventListener('mousedown', (e) => {
+                    isResizingTreeBottom = true;
+                    startY = e.clientY;
+                    startTreeHeight = treeContainer.offsetHeight;
+                    startBottomHeight = bottomPanel.offsetHeight;
+                    treeBottomResizer.classList.add('active');
+                    document.body.classList.add('resizing');
+                    e.preventDefault();
+                });
+
+                // Global mouse move handler
+                document.addEventListener('mousemove', (e) => {
+                    if (isResizingSidebar) {
+                        const deltaX = e.clientX - startX;
+                        const newWidth = Math.max(200, Math.min(600, startWidth + deltaX));
+                        sidebar.style.width = `${newWidth}px`;
+                        sidebar.style.minWidth = `${newWidth}px`;
+                        sidebar.style.maxWidth = `${newWidth}px`;
+                    }
+
+                    if (isResizingInputOutput) {
+                        const container = inputPanel.parentElement;
+                        const containerWidth = container.offsetWidth;
+                        const deltaX = e.clientX - startX;
+                        const newWidth = Math.max(300, Math.min(containerWidth - 350, startWidth + deltaX));
+                        const percentage = (newWidth / containerWidth) * 100;
+
+                        inputPanel.style.flex = 'none';
+                        inputPanel.style.width = `${percentage}%`;
+                        inputPanel.style.minWidth = '300px';
+                    }
+
+                    if (isResizingTreeBottom) {
+                        const container = treeContainer.parentElement;
+                        const containerHeight = container.offsetHeight;
+                        const deltaY = e.clientY - startY;
+
+                        const newTreeHeight = Math.max(200, startTreeHeight + deltaY);
+                        const newBottomHeight = Math.max(150, startBottomHeight - deltaY);
+
+                        // Calculate percentages
+                        const totalHeight = newTreeHeight + newBottomHeight;
+                        const treePercentage = (newTreeHeight / totalHeight) * 100;
+                        const bottomPercentage = (newBottomHeight / totalHeight) * 100;
+
+                        treeContainer.style.flex = 'none';
+                        treeContainer.style.height = `${treePercentage}%`;
+
+                        bottomPanel.style.flex = 'none';
+                        bottomPanel.style.height = `${bottomPercentage}%`;
+                    }
+                });
+
+                // Global mouse up handler
+                document.addEventListener('mouseup', () => {
+                    if (isResizingSidebar || isResizingInputOutput || isResizingTreeBottom) {
+                        sidebarResizer.classList.remove('active');
+                        inputOutputResizer.classList.remove('active');
+                        treeBottomResizer.classList.remove('active');
+                        document.body.classList.remove('resizing');
+                    }
+                    isResizingSidebar = false;
+                    isResizingInputOutput = false;
+                    isResizingTreeBottom = false;
+                });
+            }
+
+            initDragAndDrop() {
+                let draggedElement = null;
+                let draggedPath = null;
+                let draggedKey = null;
+                let draggedIndex = null;
+
+                // Delegate event listeners to the tree container
+                const treeContainer = $('#tree-container');
+
+                treeContainer.addEventListener('dragstart', (e) => {
+                    const draggableItem = e.target.closest('.draggable-item');
+                    if (!draggableItem) return;
+
+                    draggedElement = draggableItem;
+                    draggedPath = draggableItem.dataset.path;
+                    draggedKey = draggableItem.dataset.key;
+                    draggedIndex = draggableItem.dataset.index;
+
+                    draggableItem.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', draggableItem.innerHTML);
+                });
+
+                treeContainer.addEventListener('dragend', (e) => {
+                    const draggableItem = e.target.closest('.draggable-item');
+                    if (!draggableItem) return;
+
+                    draggableItem.classList.remove('dragging');
+                    // Remove all drag-over classes
+                    $$('.drag-over, .drag-over-bottom').forEach(el => {
+                        el.classList.remove('drag-over', 'drag-over-bottom');
+                    });
+                });
+
+                treeContainer.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const draggableItem = e.target.closest('.draggable-item');
+                    if (!draggableItem || draggableItem === draggedElement) return;
+
+                    // Remove previous drag-over indicators
+                    $$('.drag-over, .drag-over-bottom').forEach(el => {
+                        el.classList.remove('drag-over', 'drag-over-bottom');
+                    });
+
+                    // Determine if we should show indicator above or below
+                    const rect = draggableItem.getBoundingClientRect();
+                    const midpoint = rect.top + rect.height / 2;
+
+                    if (e.clientY < midpoint) {
+                        draggableItem.classList.add('drag-over');
+                    } else {
+                        draggableItem.classList.add('drag-over-bottom');
+                    }
+
+                    e.dataTransfer.dropEffect = 'move';
+                });
+
+                treeContainer.addEventListener('dragleave', (e) => {
+                    const draggableItem = e.target.closest('.draggable-item');
+                    if (!draggableItem) return;
+
+                    draggableItem.classList.remove('drag-over', 'drag-over-bottom');
+                });
+
+                treeContainer.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const targetItem = e.target.closest('.draggable-item');
+                    if (!targetItem || targetItem === draggedElement) return;
+
+                    const targetParent = targetItem.dataset.parent;
+                    const draggedParent = draggedElement.dataset.parent;
+
+                    // Only allow reordering within the same parent
+                    if (targetParent !== draggedParent) {
+                        this.showToast('⚠️ Can only reorder items within the same parent');
+                        targetItem.classList.remove('drag-over', 'drag-over-bottom');
+                        return;
+                    }
+
+                    // Determine drop position
+                    const rect = targetItem.getBoundingClientRect();
+                    const midpoint = rect.top + rect.height / 2;
+                    const dropBefore = e.clientY < midpoint;
+
+                    // Perform the reorder
+                    this.reorderJsonItem(draggedParent, draggedKey || draggedIndex, targetItem.dataset.key || targetItem.dataset.index, dropBefore);
+
+                    targetItem.classList.remove('drag-over', 'drag-over-bottom');
+                });
+            }
+
+            reorderJsonItem(parentPath, fromKey, toKey, insertBefore) {
+                if (!state.json) return;
+
+                // Navigate to the parent object/array
+                const pathParts = parentPath.split(/[\[\]'.]/).filter(p => p && p !== '$');
+                let parent = state.json;
+
+                for (const part of pathParts) {
+                    if (parent[part] !== undefined) {
+                        parent = parent[part];
+                    }
+                }
+
+                if (Array.isArray(parent)) {
+                    // Reorder array
+                    const fromIndex = parseInt(fromKey);
+                    const toIndex = parseInt(toKey);
+                    const item = parent.splice(fromIndex, 1)[0];
+                    const adjustedToIndex = insertBefore ? toIndex : toIndex + 1;
+                    const finalIndex = fromIndex < adjustedToIndex ? adjustedToIndex - 1 : adjustedToIndex;
+                    parent.splice(finalIndex, 0, item);
+                } else {
+                    // Reorder object properties
+                    const entries = Object.entries(parent);
+                    const fromIndex = entries.findIndex(([k]) => k === fromKey);
+                    const toIndex = entries.findIndex(([k]) => k === toKey);
+
+                    if (fromIndex === -1 || toIndex === -1) return;
+
+                    const [movedEntry] = entries.splice(fromIndex, 1);
+                    const adjustedToIndex = insertBefore ? toIndex : toIndex + 1;
+                    const finalIndex = fromIndex < adjustedToIndex ? adjustedToIndex - 1 : adjustedToIndex;
+                    entries.splice(finalIndex, 0, movedEntry);
+
+                    // Rebuild object with new order
+                    const newObj = {};
+                    entries.forEach(([k, v]) => newObj[k] = v);
+
+                    // Replace parent's properties
+                    Object.keys(parent).forEach(k => delete parent[k]);
+                    Object.assign(parent, newObj);
+                }
+
+                // Update the input and re-render
+                const newJson = JSON.stringify(state.json, null, 2);
+                $('#json-input').value = newJson;
+                state.raw = newJson;
+                this.renderTree(state.json);
+                this.showToast('✅ Items reordered');
+            }
+
+            initEventListeners() {
+                // Input Handling
+                $('#json-input').addEventListener('input', (e) => this.handleInput(e.target.value));
+
+                // Toolbar
+                $('#btn-format').onclick = () => {
+                    if (!state.json) return;
+                    const formatted = JSON.stringify(state.json, null, 2);
+                    $('#json-input').value = formatted;
+                    this.handleInput(formatted);
+                };
+                $('#btn-minify').onclick = () => {
+                    if (!state.json) return;
+                    const minified = JSON.stringify(state.json);
+                    $('#json-input').value = minified;
+                    this.handleInput(minified);
+                };
+                $('#btn-copy').onclick = () => {
+                    navigator.clipboard.writeText($('#json-input').value);
+                    this.showToast('Copied to clipboard');
+                };
+                $('#btn-paste').onclick = async () => {
+                    const text = await navigator.clipboard.readText();
+                    $('#json-input').value = text;
+                    this.handleInput(text);
+                };
+
+                // Export Dropdown
+                $('#btn-export')?.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    $('#export-dropdown').classList.toggle('hidden');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('#export-dropdown-container')) {
+                        $('#export-dropdown')?.classList.add('hidden');
+                    }
+                });
+
+                // Export options
+                $$('.export-option').forEach(btn => {
+                    btn.onclick = () => {
+                        const format = btn.dataset.format;
+                        this.exportAs(format);
+                        $('#export-dropdown').classList.add('hidden');
+                    };
+                });
+
+                // Tree Controls
+                $('#btn-expand').onclick = () => $$('#tree-container div[id$="-content"]').forEach(el => el.classList.remove('hidden'));
+                $('#btn-collapse').onclick = () => $$('#tree-container div[id$="-content"]').forEach(el => el.classList.add('hidden'));
+
+                // Tabs
+                $$('.tab-btn').forEach(btn => {
+                    btn.onclick = () => {
+                        $$('.tab-btn').forEach(b => {
+                            b.classList.remove('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                            b.classList.add('border-transparent');
+                        });
+                        btn.classList.add('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                        btn.classList.remove('border-transparent');
+
+                        const tab = btn.dataset.tab;
+                        $('#view-analyze').classList.toggle('hidden', tab !== 'analyze');
+                        $('#view-diff').classList.toggle('hidden', tab !== 'diff');
+                        $('#view-analyze').classList.toggle('flex', tab === 'analyze');
+                        $('#view-diff').classList.toggle('flex', tab === 'diff');
+                    };
+                });
+
+                // Theme
+                $('#theme-toggle').onclick = () => toggleTheme();
+
+                // Path Listener
+                window.addEventListener('show-path', (e) => {
+                    this.showToast(`Path: ${e.detail}`);
+                });
+
+                // Diff
+                $('#btn-run-diff').onclick = () => this.runDiff();
+
+                // Bottom Panel Tabs
+                $('#btn-view-schema').onclick = () => {
+                    $('#schema-view').classList.remove('hidden');
+                    $('#er-view').classList.add('hidden');
+                    $('#btn-view-schema').classList.add('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                    $('#btn-view-schema').classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400');
+                    $('#btn-view-er').classList.remove('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                    $('#btn-view-er').classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400');
+                };
+
+                $('#btn-view-er').onclick = () => {
+                    $('#schema-view').classList.add('hidden');
+                    $('#er-view').classList.remove('hidden');
+                    $('#btn-view-er').classList.add('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                    $('#btn-view-er').classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400');
+                    $('#btn-view-schema').classList.remove('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
+                    $('#btn-view-schema').classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400');
+
+                    // Trigger render if data exists
+                    if (state.json) {
+                        this.renderEr(state.json);
+                    }
+                };
+
+                // Search
+                $('#tree-search').addEventListener('input', (e) => {
+                    this.filterTree(e.target.value);
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                        e.preventDefault();
+                        $('#tree-search').focus();
+                    }
+                });
+
+                // Drag & Drop for JSON Input
+                const dropZone = $('#json-input');
+                dropZone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                });
+
+                dropZone.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+
+                    if (e.dataTransfer.files.length > 0) {
+                        const file = e.dataTransfer.files[0];
+
+                        if (!file.name.endsWith('.json') && !file.type.includes('json')) {
+                            this.showToast('⚠️ Warning: File may not be JSON');
+                        }
+
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            dropZone.value = event.target.result;
+                            this.handleInput(event.target.result);
+                            this.showToast(`📁 Loaded ${file.name}`);
+                        };
+                        reader.onerror = () => {
+                            this.showToast('❌ Error reading file');
+                        };
+                        reader.readAsText(file);
+                    }
+                });
+
+                // Warnings Toggle
+                $('#btn-toggle-warnings').onclick = () => {
+                    state.showWarnings = !state.showWarnings;
+                    $('#warnings-label').textContent = `Warnings: ${state.showWarnings ? 'On' : 'Off'}`;
+                    if (state.json) {
+                        this.handleInput(state.raw); // Re-render to show/hide warnings
+                    }
+                    this.showToast(`Warnings ${state.showWarnings ? 'enabled' : 'disabled'}`);
+                };
+
+                // Shortcuts Help Modal
+                $('#btn-shortcuts-help').onclick = () => {
+                    $('#shortcuts-modal').classList.remove('hidden');
+                };
+                $('#close-shortcuts-modal').onclick = () => {
+                    $('#shortcuts-modal').classList.add('hidden');
+                };
+                $('#shortcuts-modal').onclick = (e) => {
+                    if (e.target.id === 'shortcuts-modal') {
+                        $('#shortcuts-modal').classList.add('hidden');
+                    }
+                };
+
+                // Fullscreen buttons
+                $('#btn-fullscreen-tree')?.addEventListener('click', () => {
+                    const treePanel = $('#tree-container').closest('.flex-1.overflow-auto.p-4');
+                    this.toggleFullscreen(treePanel);
+                });
+                $('#btn-fullscreen-bottom')?.addEventListener('click', () => {
+                    // Check if ER view is active
+                    const erView = $('#er-view');
+                    const isErActive = !erView.classList.contains('hidden');
+
+                    if (isErActive) {
+                        // For ER diagram, we want to fullscreen the entire bottom panel parent
+                        const bottomPanel = $('#bottom-panel-content').parentElement;
+                        this.toggleFullscreen(bottomPanel, true); // true = ER mode
+                    } else {
+                        const bottomPanel = $('#bottom-panel-content').parentElement;
+                        this.toggleFullscreen(bottomPanel, false);
+                    }
+                });
+            }
+
+            initKeyboardShortcuts() {
+                document.addEventListener('keydown', (e) => {
+                    // Ctrl/Cmd + K: Command Palette (handled in initCommandPalette)
+                    // Ctrl/Cmd + F: Search in tree (handled above)
+
+                    // Ctrl/Cmd + S: Format JSON
+                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault();
+                        if (state.json) {
+                            const formatted = JSON.stringify(state.json, null, 2);
+                            $('#json-input').value = formatted;
+                            this.handleInput(formatted);
+                            this.showToast('🎨 JSON Formatted');
+                        }
+                    }
+
+                    // Ctrl/Cmd + Shift + M: Minify JSON
+                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'M') {
+                        e.preventDefault();
+                        if (state.json) {
+                            const minified = JSON.stringify(state.json);
+                            $('#json-input').value = minified;
+                            this.handleInput(minified);
+                            this.showToast('📦 JSON Minified');
+                        }
+                    }
+
+                    // Ctrl/Cmd + C: Copy JSON (when not in input)
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'c' && document.activeElement !== $('#json-input')) {
+                        if (!window.getSelection().toString()) {
+                            e.preventDefault();
+                            navigator.clipboard.writeText($('#json-input').value);
+                            this.showToast('📋 Copied to clipboard');
+                        }
+                    }
+
+                    // Ctrl/Cmd + V: Paste JSON
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'v' && document.activeElement === $('#json-input')) {
+                        // Let default paste happen
+                    }
+
+                    // Ctrl/Cmd + E: Expand All
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                        e.preventDefault();
+                        $$('#tree-container div[id$="-content"]').forEach(el => el.classList.remove('hidden'));
+                        this.showToast('📂 All Expanded');
+                    }
+
+                    // Ctrl/Cmd + Shift + E: Collapse All
+                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
+                        e.preventDefault();
+                        $$('#tree-container div[id$="-content"]').forEach(el => el.classList.add('hidden'));
+                        this.showToast('📁 All Collapsed');
+                    }
+
+                    // Ctrl/Cmd + D: Toggle Diff View
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                        e.preventDefault();
+                        this.switchMode('diff');
+                    }
+
+                    // Ctrl/Cmd + 1: Analyze View
+                    if ((e.ctrlKey || e.metaKey) && e.key === '1') {
+                        e.preventDefault();
+                        this.switchMode('analyze');
+                    }
+
+                    // Ctrl/Cmd + T: Toggle Theme
+                    if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+                        e.preventDefault();
+                        toggleTheme();
+                        this.showToast(`🎨 ${state.theme === 'dark' ? 'Dark' : 'Light'} Mode`);
+                    }
+
+                    // Ctrl/Cmd + =: Zoom In (active panel)
+                    if ((e.ctrlKey || e.metaKey) && e.key === '=') {
+                        e.preventDefault();
+                        this.zoomPanel('in');
+                    }
+
+                    // Ctrl/Cmd + -: Zoom Out (active panel)
+                    if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                        e.preventDefault();
+                        this.zoomPanel('out');
+                    }
+
+                    // Ctrl/Cmd + 0: Reset Zoom
+                    if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                        e.preventDefault();
+                        this.zoomPanel('reset');
+                    }
+
+                    // F3 or Ctrl/Cmd + G: Next Search Result
+                    if (e.key === 'F3' || ((e.ctrlKey || e.metaKey) && e.key === 'g' && !e.shiftKey)) {
+                        e.preventDefault();
+                        this.navigateSearch('next');
+                    }
+
+                    // Shift + F3 or Ctrl/Cmd + Shift + G: Previous Search Result
+                    if ((e.shiftKey && e.key === 'F3') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'G')) {
+                        e.preventDefault();
+                        this.navigateSearch('prev');
+                    }
+
+                    // ? : Show Keyboard Shortcuts
+                    if (e.key === '?' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                        e.preventDefault();
+                        $('#shortcuts-modal').classList.remove('hidden');
+                    }
+
+                    // Esc: Close Modals
+                    if (e.key === 'Escape') {
+                        $('#shortcuts-modal').classList.add('hidden');
+                        $('#cmd-palette').classList.add('hidden');
+                        if (state.fullscreenElement) {
+                            this.exitFullscreen();
+                        }
+                    }
+
+                    // F11: Toggle Fullscreen
+                    if (e.key === 'F11') {
+                        e.preventDefault();
+                        const activePanel = document.activeElement.closest('#tree-container, #schema-view, #er-view')?.parentElement;
+                        if (activePanel) {
+                            this.toggleFullscreen(activePanel);
+                        }
+                    }
+                });
+            }
+
+            toggleFullscreen(element, isErMode = false) {
+                if (!element) return;
+
+                if (state.fullscreenElement === element) {
+                    this.exitFullscreen();
+                } else {
+                    if (state.fullscreenElement) {
+                        this.exitFullscreen();
+                    }
+                    state.fullscreenElement = element;
+                    state.isErFullscreen = isErMode;
+
+                    // Apply fullscreen styling
+                    element.classList.add('fixed', 'inset-0', 'z-50', 'bg-white', 'dark:bg-gray-950');
+
+                    if (isErMode) {
+                        // Special handling for ER diagram fullscreen
+                        element.classList.add('p-0'); // Remove padding
+                        const erView = element.querySelector('#er-view');
+                        const bottomPanelContent = element.querySelector('#bottom-panel-content');
+
+                        if (erView && bottomPanelContent) {
+                            // Make the content container fill the screen
+                            bottomPanelContent.classList.add('h-screen', 'p-0', 'm-0');
+                            bottomPanelContent.classList.remove('overflow-auto', 'p-4'); // Remove original padding/overflow
+                            erView.classList.remove('min-h-[300px]');
+                            erView.classList.add('h-full', 'w-full');
+                            erView.style.minHeight = '100vh';
+                            erView.style.minWidth = '100vw';
+                        }
+                    } else {
+                        element.classList.add('overflow-auto');
+                    }
+
+                    this.showToast('Press Esc or F11 to exit fullscreen');
+                }
+            }
+
+            exitFullscreen() {
+                if (state.fullscreenElement) {
+                    state.fullscreenElement.classList.remove('fixed', 'inset-0', 'z-50', 'bg-white', 'dark:bg-gray-950', 'overflow-auto', 'p-0');
+
+                    // Reset ER diagram specific styling
+                    if (state.isErFullscreen) {
+                        const erView = state.fullscreenElement.querySelector('#er-view');
+                        const bottomPanelContent = state.fullscreenElement.querySelector('#bottom-panel-content');
+
+                        if (erView && bottomPanelContent) {
+                            bottomPanelContent.classList.remove('h-screen', 'p-0', 'm-0');
+                            bottomPanelContent.classList.add('overflow-auto', 'p-4'); // Restore original padding/overflow
+                            erView.classList.add('min-h-[300px]');
+                            erView.classList.remove('h-full', 'w-full');
+                            erView.style.minHeight = '';
+                            erView.style.minWidth = '';
+                        }
+                        state.isErFullscreen = false;
+                    }
+
+                    state.fullscreenElement = null;
+                }
+            }
+
+            zoomPanel(action) {
+                const activePanel = document.activeElement.closest('#json-input, #tree-container, #schema-view, #er-view');
+                let target = 'tree'; // default
+
+                if (activePanel) {
+                    if (activePanel.id === 'json-input') target = 'input';
+                    else if (activePanel.id === 'tree-container') target = 'tree';
+                    else if (activePanel.id === 'schema-view') target = 'schema';
+                }
+
+                if (action === 'in') {
+                    state.zoom[target] = Math.min(state.zoom[target] + 0.1, 2);
+                } else if (action === 'out') {
+                    state.zoom[target] = Math.max(state.zoom[target] - 0.1, 0.5);
+                } else if (action === 'reset') {
+                    state.zoom[target] = 1;
+                }
+
+                this.applyZoom();
+                const percent = Math.round(state.zoom[target] * 100);
+                this.showToast(`🔍 Zoom ${percent}%`);
+            }
+
+            applyZoom() {
+                $('#json-input').style.fontSize = `${14 * state.zoom.input}px`;
+                $('#tree-container').style.fontSize = `${14 * state.zoom.tree}px`;
+                $('#schema-view').style.fontSize = `${12 * state.zoom.schema}px`;
+            }
+
+            navigateSearch(direction) {
+                if (state.searchResults.length === 0) {
+                    this.showToast('No search results');
+                    return;
+                }
+
+                if (direction === 'next') {
+                    state.currentSearchIndex = (state.currentSearchIndex + 1) % state.searchResults.length;
+                } else {
+                    state.currentSearchIndex = state.currentSearchIndex <= 0
+                        ? state.searchResults.length - 1
+                        : state.currentSearchIndex - 1;
+                }
+
+                const result = state.searchResults[state.currentSearchIndex];
+                if (result) {
+                    result.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    result.classList.add('bg-yellow-200', 'dark:bg-yellow-800');
+                    setTimeout(() => result.classList.remove('bg-yellow-200', 'dark:bg-yellow-800'), 1000);
+
+                    this.showToast(`Result ${state.currentSearchIndex + 1} of ${state.searchResults.length}`);
+                }
+            }
+
+            filterTree(query) {
+                if (!query) {
+                    $$('#tree-container .hidden').forEach(el => {
+                        if (!el.id.endsWith('-content')) el.classList.remove('hidden');
+                    });
+                    $$('.search-hidden').forEach(el => el.classList.remove('hidden', 'search-hidden'));
+                    $$('.search-highlight').forEach(el => el.classList.remove('search-highlight', 'bg-yellow-200', 'dark:bg-yellow-900'));
+                    state.searchResults = [];
+                    state.currentSearchIndex = -1;
+                    return;
+                }
+
+                const lowerQuery = query.toLowerCase();
+                state.searchResults = [];
+
+                const allItems = $$('#tree-container .my-0.5');
+                allItems.forEach(el => el.classList.add('search-hidden'));
+
+                // Find matches
+                allItems.forEach(el => {
+                    const key = el.querySelector('.syntax-key')?.textContent || '';
+                    const val = el.querySelector('[class^="syntax-"]:not(.syntax-key)')?.textContent || '';
+
+                    if (key.toLowerCase().includes(lowerQuery) || val.toLowerCase().includes(lowerQuery)) {
+                        // Highlight match
+                        el.classList.add('search-highlight', 'bg-yellow-200', 'dark:bg-yellow-900');
+                        state.searchResults.push(el);
+
+                        // Show this element and all its ancestors
+                        let current = el;
+                        while (current && current !== $('#tree-container')) {
+                            current.classList.remove('search-hidden', 'hidden');
+                            if (current.id && current.id.endsWith('-content')) {
+                                current.classList.remove('hidden'); // Expand
+                            }
+                            current = current.parentElement;
+                        }
+                    }
+                });
+
+                // Apply hidden class to search-hidden
+                $$('.search-hidden').forEach(el => el.classList.add('hidden'));
+
+                // Update search info
+                if (state.searchResults.length > 0) {
+                    state.currentSearchIndex = 0;
+                    this.showToast(`Found ${state.searchResults.length} results`);
+                } else {
+                    this.showToast('No results found');
+                }
+            }
+
+            handleInput(text) {
+                state.raw = text;
+                const { data, error } = JsonParser.parse(text);
+                const container = $('#tree-container');
+
+                if (error) {
+                    state.json = null;
+
+                    // Try to auto-fix
+                    const fixed = JsonParser.tryFix(text);
+                    let fixHtml = '';
+                    if (fixed) {
+                        fixHtml = `
+                            <div class="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded">
+                                <p class="text-green-700 dark:text-green-300 font-bold mb-2">✨ Auto-Fix Available!</p>
+                                <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">We detected common issues (trailing commas, unquoted keys, single quotes) and can fix them automatically.</p>
+                                <button id="btn-apply-fix" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium">Apply Fix</button>
+                            </div>
+                        `;
+                    }
+
+                    container.innerHTML = `
+                        <div class="text-red-500 p-4 font-mono text-sm">
+                            <div class="flex items-center gap-2 mb-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                                <span class="font-bold">Invalid JSON</span>
+                            </div>
+                            <div class="mt-1 opacity-75 text-xs">${escapeHtml(error)}</div>
+                            ${fixHtml}
+                        </div>
+                    `;
+
+                    if (fixed) {
+                        setTimeout(() => {
+                            const applyBtn = $('#btn-apply-fix');
+                            if (applyBtn) {
+                                applyBtn.onclick = () => {
+                                    $('#json-input').value = fixed;
+                                    this.handleInput(fixed);
+                                    this.showToast('Auto-fix applied!');
+                                };
+                            }
+                        }, 0);
+                    }
+
+                    // Clear bottom panels
+                    $('#schema-view').innerHTML = '<div class="text-gray-400 italic p-4">No data to analyze</div>';
+                    this.erVisualizer.setData(null);
+                    this.updateLinterUI(error, { errors: [error], warnings: [] });
+
+                    // Clear sidebar
+                    $('#object-nav').innerHTML = '<div class="text-gray-400 text-center mt-4 text-xs italic">No structure</div>';
+                    return;
+                }
+
+                state.json = data;
+
+                // Lint
+                const linterResults = Linter.lint(text);
+                this.updateLinterUI(null, linterResults);
+
+                // Render Tree
+                container.innerHTML = TreeRenderer.render(data);
+
+                // Show linter warnings in tree if any (only if showWarnings is true)
+                if (state.showWarnings && linterResults.warnings.length > 0) {
+                    const warningHtml = linterResults.warnings.map(w => `<div class="text-orange-600 dark:text-orange-400 text-xs flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg> ${w}</div>`).join('');
+                    const warnContainer = document.createElement('div');
+                    warnContainer.className = 'mb-3 p-2 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 rounded';
+                    warnContainer.innerHTML = warningHtml;
+                    container.insertBefore(warnContainer, container.firstChild);
+                }
+
+                // Update other panels
+                this.updateSidebar(data);
+                this.updateSchema(data);
+            }
+
+            updateLinterUI(parseError, linterResults) {
+                const statusEl = $('#linter-status');
+                if (!statusEl) return;
+
+                let html = '';
+
+                if (parseError) {
+                    html += `<span class="text-red-500 flex items-center gap-1 font-bold"><span class="w-2 h-2 rounded-full bg-red-500"></span> Invalid JSON</span>`;
+                } else {
+                    html += `<span class="text-green-500 flex items-center gap-1 font-bold"><span class="w-2 h-2 rounded-full bg-green-500"></span> Valid JSON</span>`;
+                }
+
+                if (linterResults && linterResults.warnings.length > 0) {
+                    html += `<span class="text-amber-500 ml-4 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> ${linterResults.warnings.length} Warnings</span>`;
+                }
+
+                statusEl.innerHTML = html;
+            }
+
+            renderTree(data) {
+                $('#tree-container').innerHTML = TreeRenderer.render(data);
+                // Re-render ER view if visible
+                if (!$('#er-view').classList.contains('hidden')) {
+                    this.renderEr(data);
+                }
+            }
+
+            updateSidebar(data) {
+                const nav = $('#object-nav');
+                if (!data || typeof data !== 'object') {
+                    nav.innerHTML = '<div class="text-gray-400 text-center mt-4 text-xs italic">No structure</div>';
+                    return;
+                }
+
+                const buildTree = (obj, path = '$', level = 0) => {
+                    if (level > 3) return ''; // Limit nesting depth
+
+                    let html = '';
+                    const entries = Object.entries(obj);
+
+                    entries.forEach(([key, val]) => {
+                        const currentPath = path === '$' ? `$['${key}']` : `${path}['${key}']`;
+                        const isObject = val && typeof val === 'object' && !Array.isArray(val);
+                        const isArray = Array.isArray(val);
+                        const hasChildren = isObject || (isArray && val.length > 0 && typeof val[0] === 'object');
+
+                        const indent = level * 12;
+
+                        if (hasChildren) {
+                            const id = 'nav-' + Math.random().toString(36).substr(2, 9);
+                            html += `
+                                <div class="select-none" style="margin-left: ${indent}px">
+                                    <div class="flex items-center gap-1 group cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1" onclick="document.getElementById('${id}').classList.toggle('hidden'); this.querySelector('.nav-arrow').classList.toggle('rotate-90')">
+                                        <svg class="w-3 h-3 nav-arrow transition-transform text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                                        <span class="text-xs truncate flex-1 font-medium" title="${escapeHtml(key)}">${escapeHtml(key)}</span>
+                                        <span class="text-[10px] text-gray-400">${isArray ? '[]' : '{}'}</span>
+                                        <button class="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-indigo-600 hover:text-white rounded" onclick="event.stopPropagation(); app.scrollToPath('${currentPath}')" title="Jump to">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                                        </button>
+                                    </div>
+                                    <div id="${id}" class="hidden">
+                                        ${isArray && val[0] ? buildTree(val[0], currentPath + '[0]', level + 1) : buildTree(val, currentPath, level + 1)}
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            html += `
+                                <div class="flex items-center gap-1 group cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-1" style="margin-left: ${indent + 16}px" onclick="app.scrollToPath('${currentPath}')">
+                                    <span class="text-xs truncate flex-1" title="${escapeHtml(key)}">${escapeHtml(key)}</span>
+                                    <span class="text-[10px] text-gray-400">${typeof val}</span>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    return html;
+                };
+
+                nav.innerHTML = buildTree(data);
+            }
+
+            scrollToPath(path) {
+                const el = $(`[data-path="${path}"]`);
+                if (el) {
+                    // Expand all parents
+                    let current = el;
+                    while (current && current !== $('#tree-container')) {
+                        if (current.id && current.id.endsWith('-content')) {
+                            current.classList.remove('hidden');
+                            // Find and rotate the toggle button
+                            const btn = current.previousElementSibling?.querySelector('button');
+                            if (btn) btn.classList.remove('-rotate-90');
+                        }
+                        current = current.parentElement;
+                    }
+
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('bg-indigo-500/20');
+                    setTimeout(() => el.classList.remove('bg-indigo-500/20'), 1500);
+                } else {
+                    this.showToast('Path not found in tree');
+                }
+            }
+
+            renderEr(data) {
+                this.erVisualizer.setData(data);
+            }
+
+            updateSchema(data) {
+                const stats = SchemaEngine.getStats(data);
+                const type = SchemaEngine.infer(data);
+
+                $('#schema-view').innerHTML = `
+                    <div class="grid grid-cols-3 gap-2 mb-2">
+                        <div class="bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                            <div class="text-gray-500 text-[10px] uppercase">Nodes</div>
+                            <div class="text-lg font-bold">${stats.nodes}</div>
+                        </div>
+                        <div class="bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                            <div class="text-gray-500 text-[10px] uppercase">Depth</div>
+                            <div class="text-lg font-bold">${stats.depth}</div>
+                        </div>
+                        <div class="bg-gray-100 dark:bg-gray-800 p-2 rounded">
+                            <div class="text-gray-500 text-[10px] uppercase">Size (KB)</div>
+                            <div class="text-lg font-bold">${(stats.size / 1024).toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-100 dark:bg-gray-800 p-2 rounded overflow-x-auto">
+                        <div class="text-gray-500 text-[10px] uppercase mb-1">Inferred Type</div>
+                        <code class="text-emerald-500 whitespace-pre">${escapeHtml(type)}</code>
+                    </div>
+                `;
+            }
+
+            runDiff() {
+                const leftRaw = $('#diff-input-left').value;
+                const rightRaw = $('#diff-input-right').value;
+
+                try {
+                    const left = JSON.parse(leftRaw);
+                    const right = JSON.parse(rightRaw);
+                    const diffs = DiffEngine.compute(left, right);
+
+                    const output = $('#diff-output');
+                    if (diffs.length === 0) {
+                        output.innerHTML = '<div class="text-green-500 text-center mt-10">No differences found. Objects are identical.</div>';
+                    } else {
+                        let html = '';
+                        diffs.forEach(d => {
+                            let color = 'text-gray-500';
+                            let icon = '?';
+                            if (d.type === 'added') { color = 'text-green-500'; icon = '+'; }
+                            if (d.type === 'removed') { color = 'text-red-500'; icon = '-'; }
+                            if (d.type === 'modified') { color = 'text-amber-500'; icon = '~'; }
+
+                            html += `<div class="mb-1 ${color} border-b border-gray-800 pb-1">
+                                <span class="font-bold w-4 inline-block">${icon}</span>
+                                <span class="font-semibold">${d.path}</span>
+                                ${d.type === 'modified' ?
+                                    `<div class="pl-6 text-xs text-gray-400">Old: ${JSON.stringify(d.old)}</div><div class="pl-6 text-xs text-gray-200">New: ${JSON.stringify(d.new)}</div>` :
+                                    `<span class="text-gray-400 text-xs ml-2">${JSON.stringify(d.val)}</span>`
+                                }
+                            </div>`;
+                        });
+                        output.innerHTML = html;
+                    }
+                } catch (e) {
+                    $('#diff-output').innerHTML = `<div class="text-red-500">Error parsing inputs: ${e.message}</div>`;
+                }
+            }
+
+            initCommandPalette() {
+                const modal = $('#cmd-palette');
+                const input = $('#cmd-input');
+                const list = $('#cmd-list');
+
+                const commands = [
+                    { label: 'Format JSON', shortcut: 'Ctrl+S', action: () => $('#btn-format').click() },
+                    { label: 'Minify JSON', shortcut: 'Ctrl+Shift+M', action: () => $('#btn-minify').click() },
+                    { label: 'Copy JSON', shortcut: 'Ctrl+C', action: () => $('#btn-copy').click() },
+                    { label: 'Paste JSON', shortcut: 'Ctrl+V', action: () => $('#btn-paste').click() },
+                    { label: 'Expand All', shortcut: 'Ctrl+E', action: () => $('#btn-expand').click() },
+                    { label: 'Collapse All', shortcut: 'Ctrl+Shift+E', action: () => $('#btn-collapse').click() },
+                    { label: 'Search in Tree', shortcut: 'Ctrl+F', action: () => $('#tree-search').focus() },
+                    { label: 'Next Search Result', shortcut: 'F3 / Ctrl+G', action: () => this.navigateSearch('next') },
+                    { label: 'Previous Search Result', shortcut: 'Shift+F3 / Ctrl+Shift+G', action: () => this.navigateSearch('prev') },
+                    { label: 'Toggle Theme', shortcut: 'Ctrl+T', action: () => toggleTheme() },
+                    { label: 'Switch to Analyze View', shortcut: 'Ctrl+1', action: () => this.switchMode('analyze') },
+                    { label: 'Switch to Diff View', shortcut: 'Ctrl+D', action: () => this.switchMode('diff') },
+                    { label: 'Zoom In', shortcut: 'Ctrl+=', action: () => this.zoomPanel('in') },
+                    { label: 'Zoom Out', shortcut: 'Ctrl+-', action: () => this.zoomPanel('out') },
+                    { label: 'Reset Zoom', shortcut: 'Ctrl+0', action: () => this.zoomPanel('reset') }
+                ];
+
+                const renderCommands = (filter = '') => {
+                    list.innerHTML = '';
+                    const filtered = commands.filter(c => c.label.toLowerCase().includes(filter.toLowerCase()));
+
+                    if (filtered.length === 0) {
+                        list.innerHTML = '<div class="p-4 text-center text-gray-400">No commands found</div>';
+                        return;
+                    }
+
+                    filtered.forEach((c, idx) => {
+                        const item = document.createElement('div');
+                        item.className = `p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer flex justify-between items-center group ${idx === 0 ? 'bg-gray-100 dark:bg-gray-800' : ''}`;
+                        item.innerHTML = `
+                            <span class="font-medium text-gray-700 dark:text-gray-200">${c.label}</span>
+                            <span class="text-xs px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300 font-mono">${c.shortcut}</span>
+                        `;
+                        item.onclick = () => {
+                            c.action();
+                            close();
+                        };
+                        list.appendChild(item);
+                    });
+                };
+
+                const open = () => {
+                    modal.classList.remove('hidden');
+                    input.value = '';
+                    input.focus();
+                    renderCommands();
+                };
+
+                const close = () => modal.classList.add('hidden');
+
+                document.addEventListener('keydown', (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                        e.preventDefault();
+                        open();
+                    }
+                    if (e.key === 'Escape') close();
+                });
+
+                input.addEventListener('input', (e) => renderCommands(e.target.value));
+
+                $('#cmd-palette-trigger')?.addEventListener('click', open);
+                // Close on click outside
+                modal.onclick = (e) => {
+                    if (e.target === modal) close();
+                };
+            }
+
+            exportAs(format) {
+                if (!state.json) {
+                    this.showToast('❌ No JSON data to export');
+                    return;
+                }
+
+                let content = '';
+                let filename = 'data';
+                let mimeType = 'text/plain';
+
+                try {
+                    switch (format) {
+                        case 'json':
+                            content = JSON.stringify(state.json, null, 2);
+                            filename = 'data.json';
+                            mimeType = 'application/json';
+                            break;
+                        case 'xml':
+                            content = ConverterEngine.toXML(state.json);
+                            filename = 'data.xml';
+                            mimeType = 'application/xml';
+                            break;
+                        case 'csv':
+                            content = ConverterEngine.toCSV(state.json);
+                            filename = 'data.csv';
+                            mimeType = 'text/csv';
+                            break;
+                        case 'yaml':
+                            content = ConverterEngine.toYAML(state.json);
+                            filename = 'data.yaml';
+                            mimeType = 'text/yaml';
+                            break;
+                        case 'ts':
+                            content = ConverterEngine.toTypeScript(state.json);
+                            filename = 'data.ts';
+                            mimeType = 'text/typescript';
+                            break;
+                        default:
+                            this.showToast('❌ Unknown format');
+                            return;
+                    }
+
+                    // Download file
+                    const blob = new Blob([content], { type: mimeType });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    this.showToast(`✅ Exported as ${format.toUpperCase()}`);
+                } catch (error) {
+                    this.showToast(`❌ Export failed: ${error.message}`);
+                }
+            }
+
+            showToast(msg) {
+                const toast = document.createElement('div');
+                toast.className = 'bg-gray-800 text-white px-4 py-2 rounded shadow-lg text-sm animate-fade-in';
+                toast.textContent = msg;
+                $('#toast-container').appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }
+        }
+
+        // Start App
+        window.app = new App();
+    </script>
+</body>
+
+</html>
